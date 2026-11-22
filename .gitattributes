@@ -1,0 +1,8 @@
+# Shell scripts run inside WSL (Linux) or natively on macOS/Linux: a CRLF
+# line ending breaks them ("bash\r: command not found"), and Git on Windows
+# converts to CRLF by default.
+*.sh text eol=lf
+
+# Batch files need CRLF on Windows (labels and goto can misbehave with LF only).
+*.cmd text eol=crlf
+*.bat text eol=crlf

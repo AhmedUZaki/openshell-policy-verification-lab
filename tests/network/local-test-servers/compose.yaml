@@ -1,0 +1,38 @@
+services:
+  origin:
+    image: python:3.12-alpine
+    container_name: ft-network-origin-app
+    command: ["python", "/app/origin.py"]
+    volumes:
+      - ./origin.py:/app/origin.py:ro
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: ft-network-caddy
+    depends_on:
+      - origin
+    ports:
+      - "443:443"
+      - "444:444"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./.runtime/logs:/logs
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    networks:
+      default: {}
+      openshell:
+        aliases:
+          - host-a.test
+          - host-b.test
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  openshell:
+    external: true
+    name: openshell-docker

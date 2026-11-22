@@ -1,0 +1,52 @@
+{
+    admin off
+    auto_https disable_redirects
+}
+
+https://host-a.test {
+    tls internal
+    log {
+        output file /logs/host-a.json
+        format json
+    }
+    reverse_proxy origin:8080 {
+        flush_interval -1
+        header_up X-Origin-Name A
+    }
+}
+
+https://host-b.test {
+    tls internal
+    log {
+        output file /logs/host-b.json
+        format json
+    }
+    reverse_proxy origin:8080 {
+        flush_interval -1
+        header_up X-Origin-Name B
+    }
+}
+
+https://host.openshell.internal:443 {
+    tls internal
+    log {
+        output file /logs/host-a.json
+        format json
+    }
+    reverse_proxy origin:8080 {
+        flush_interval -1
+        header_up X-Origin-Name A
+    }
+}
+
+https://host.openshell.internal:444 {
+    tls internal
+    log {
+        output file /logs/host-b.json
+        format json
+    }
+    reverse_proxy origin:8080 {
+        flush_interval -1
+        header_up X-Origin-Name B
+    }
+}
