@@ -89,7 +89,8 @@ function runAttestationCli(args = []) {
 }
 
 function expectExit(result, code, label) {
-  assert.equal(result.status, code, `${label}: expected exit ${code}; stderr=${result.stderr}`);
+  const problems = result.payload?.evidence_problems?.join(" | ") ?? "";
+  assert.equal(result.status, code, `${label}: expected exit ${code}; stderr=${result.stderr}; evidence_problems=${problems}`);
 }
 
 const checks = [];

@@ -127,6 +127,6 @@ Before producing an overall result, the analyzer verifies the signed evidence ma
 
 The analyzer treats T01–T10 as the core suite and T11–T36 as predefined extended robustness tests. It separates enforcement failures from `KNOWN-LIMITATION` and `EXPECTED` behavior. Correlated failures are grouped to avoid double counting, but the analyzer does not infer a specific root cause from correlation alone.
 
-The evaluation design, verdict semantics, evidence chain, bounded assurance claim, platform acceptance criteria, and threats to validity are documented in `docs/METHODOLOGY.md`, `docs/ASSURANCE_SCOPE.md`, and `docs/PLATFORM_VALIDATION.md`.
+The evaluation design, verdict semantics, evidence chain, bounded assurance claim, platform acceptance criteria, and threats to validity are documented in `docs/METHODOLOGY.md`, `docs/ASSURANCE_SCOPE.md`, and `docs/PLATFORM_VALIDATION.md`. The predefined test expectations are in `docs/CLAIMS.md` (T01–T10) and `docs/EXTENDED_TESTS.md` (T11–T36).
 
 The tracked repository contains only `.gitkeep` placeholders in generated-result directories; local runs may populate those ignored directories. Running `run-enforcement-audit.cmd` or `run-enforcement-audit.sh` generates fresh evidence belonging to the current user. Development-run evidence under `.local-reference-material/archived-results/` is historical and is never selected by the analyzer.
