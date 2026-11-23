@@ -243,7 +243,7 @@ function main() {
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(moduleFile)) {
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(moduleFile)) {
   try {
     main();
   } catch (error) {
