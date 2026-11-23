@@ -26,4 +26,4 @@ A host may be marked empirically validated only when all of the following are re
 
 A passing CI job covers only the portable tooling layer: it does not run Docker, OpenShell, or T01–T36. The full-enforcement cells for macOS and Linux cannot be changed to “validated” by documentation, CI, or emulation. They require evidence produced on those actual platforms.
 
-The Windows evidence is generated and ignored local material, not part of the tracked repository. Its public-key fingerprint must be retained outside the evidence bundle for an independent chain-of-custody claim.
+The Windows evidence is generated and ignored local material, not part of the tracked repository. The reference machine's public key and its fingerprint are published outside this repository, so the evidence bundle and the repository cannot change them: https://gist.github.com/AhmedUZaki/ea3571bb522ee407d4966ff946e3cb9b. Anyone who receives a bundle should compare the fingerprint it reports with the one published there.

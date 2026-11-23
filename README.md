@@ -132,7 +132,7 @@ Verify the analyzer itself with portable synthetic fault-injection tests (no Doc
 node tests/verify-analysis-integrity.mjs
 ```
 
-Every real audit run also creates a SHA-256 manifest signed with a local Ed25519 key. The first run creates the signing identity under ignored `.local-keys/`; never commit or share the private key. Record the printed public-key fingerprint outside the repository if independent chain-of-custody verification is required.
+Every real audit run also creates a SHA-256 manifest signed with a local Ed25519 key. The first run creates the signing identity under ignored `.local-keys/`; never commit or share the private key. Record the printed public-key fingerprint outside the repository if independent chain-of-custody verification is required (the reference machine's fingerprint is published at https://gist.github.com/AhmedUZaki/ea3571bb522ee407d4966ff946e3cb9b).
 
 Verify a transferred run against a separately obtained public key:
 
