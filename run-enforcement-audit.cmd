@@ -56,6 +56,6 @@ if "%DRY_RUN%"=="0" if "%RESULT%"=="0" echo Completed: all measured expectations
 if "%DRY_RUN%"=="0" if "%RESULT%"=="1" echo Completed: at least one measured expectation failed. Review audit-reports\LATEST.md.
 if "%DRY_RUN%"=="0" if "%RESULT%"=="2" echo Incomplete: setup, infrastructure, or inconclusive result. Review the output above.
 
-if "%VERSIONED%"=="1" echo Per-version reports: audit-reportsy-version ^| comparison of two or more versions: audit-reportsCOMPARISON.md
+if "%VERSIONED%"=="1" echo Per-version reports: audit-reports\by-version\ ^| comparison of two or more versions: audit-reports\COMPARISON.md
 if /i not "%~1"=="nopause" pause
 exit /b %RESULT%

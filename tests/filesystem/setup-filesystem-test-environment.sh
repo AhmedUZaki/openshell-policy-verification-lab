@@ -42,10 +42,16 @@ cleanup_partial() {
 }
 trap cleanup_partial ERR
 
-printf 'Building the test image and creating the restrictive sandbox...\n'
+# Build the image with the local container engine and pass its tag: OpenShell 0.1.x no longer
+# builds a Dockerfile or directory given to --from, and older versions accept an image tag too.
+FS_IMAGE="openshell-policy-verification/filesystem-test-sandbox:local"
+printf 'Building the test image %s...\n' "$FS_IMAGE"
+docker build -q -t "$FS_IMAGE" "$ROOT/filesystem-test-sandbox" >/dev/null
+
+printf 'Creating the restrictive sandbox...\n'
 openshell sandbox create \
   --name "$RESTRICTIVE_NAME" \
-  --from "$ROOT/filesystem-test-sandbox" \
+  --from "$FS_IMAGE" \
   --policy "$ROOT/policies/filesystem-restrictive.yaml" \
   --approval-mode manual \
   --detach
@@ -53,7 +59,7 @@ openshell sandbox create \
 printf 'Creating the permissive control sandbox...\n'
 openshell sandbox create \
   --name "$PERMISSIVE_NAME" \
-  --from "$ROOT/filesystem-test-sandbox" \
+  --from "$FS_IMAGE" \
   --policy "$ROOT/policies/filesystem-permissive.yaml" \
   --approval-mode manual \
   --detach

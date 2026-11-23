@@ -156,7 +156,15 @@ const filesystemVersion = scope !== "network" ? reportOpenShellVersion(filesyste
 if (networkVersion && filesystemVersion && networkVersion !== filesystemVersion) {
   evidenceProblems.push(`The network report measured OpenShell ${networkVersion} but the filesystem report measured ${filesystemVersion}.`);
 }
-const openshellVersion = networkVersion ?? filesystemVersion ?? null;
+// The runner may say which version it asked for. That label is only used when no evidence exists,
+// and a request that the evidence contradicts is reported as an evidence problem.
+const requestedVersion = (process.env.AUDIT_REQUESTED_OPENSHELL_VERSION ?? "").replace(/^v/, "") || null;
+const measuredVersion = networkVersion ?? filesystemVersion ?? null;
+if (measuredVersion && requestedVersion && measuredVersion !== requestedVersion) {
+  evidenceProblems.push(`OpenShell ${requestedVersion} was requested but the evidence measured ${measuredVersion}.`);
+}
+const openshellVersion = measuredVersion ?? requestedVersion;
+const openshellVersionSource = measuredVersion ? "evidence" : requestedVersion ? "requested, no evidence" : "unknown";
 const versionFolder = openshellVersion && /^[0-9A-Za-z._-]+$/.test(openshellVersion) ? openshellVersion : "unknown";
 
 const expected = scope === "network"
@@ -265,6 +273,7 @@ const payload = {
   scope,
   run_id: selectedRunId,
   openshell_version: openshellVersion,
+  openshell_version_source: openshellVersionSource,
   generated_at: generatedAt.toISOString(),
   platform: { os: os.platform(), release: os.release(), arch: os.arch() },
   sources: {
@@ -292,7 +301,7 @@ const markdown = [
   `- Generated: \`${payload.generated_at}\``,
   `- Overall: \`${overall}\``,
   `- Scope: \`${scope}\``,
-  `- OpenShell version: \`${openshellVersion ?? "unknown"}\``,
+  `- OpenShell version: \`${openshellVersion ?? "unknown"}\`${openshellVersionSource === "evidence" ? "" : ` (${openshellVersionSource})`}`,
   `- Run ID: \`${selectedRunId ?? "missing"}\``,
   `- Platform: \`${payload.platform.os} ${payload.platform.arch} ${payload.platform.release}\``,
   `- Network source: \`${payload.sources.network ?? "missing"}\``,
@@ -324,7 +333,7 @@ const markdownAr = [
   `- وقت الإنشاء: \`${payload.generated_at}\``,
   `- النتيجة العامة: \`${overall}\` — ${arabicOverall}`,
   `- النطاق: \`${scope}\``,
-  `- إصدار OpenShell: \`${openshellVersion ?? "غير معروف"}\``,
+  `- إصدار OpenShell: \`${openshellVersion ?? "غير معروف"}\`${openshellVersionSource === "evidence" ? "" : ` (${openshellVersionSource === "unknown" ? "غير معروف" : "مطلوب، ولا توجد أدلة"})`}`,
   `- معرّف التشغيل: \`${selectedRunId ?? "غير موجود"}\``,
   `- المنصة: \`${payload.platform.os} ${payload.platform.arch} ${payload.platform.release}\``,
   `- مصدر الشبكة: \`${payload.sources.network ?? "غير موجود"}\``,

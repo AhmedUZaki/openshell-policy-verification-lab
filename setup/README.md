@@ -116,3 +116,36 @@ start after that. `3-install-docker-desktop.cmd` allows up to 6 minutes for
 this and prints a line every 10 seconds so a long wait does not look frozen;
 seeing those lines for a few minutes on a brand-new install is expected, not
 a sign of a problem.
+
+## Testing OpenShell 0.1.x (for example 0.1.9) on Docker Desktop: known blocker
+
+This applies only if you run the lab against OpenShell 0.1.x, for example with
+`run-enforcement-audit --compare` or `--openshell-version 0.1.9`. OpenShell
+0.0.116 does not need anything here.
+
+**Symptom:** every sandbox fails to start, and the output ends with lines such as
+
+```text
+ControlSupervisorStartFailed: Docker supervisor exited before becoming ready
+Startup configuration fetch failed, retrying
+openshell: log push connect failed: failed to connect to OpenShell server
+```
+
+**Cause (from the OpenShell 0.1.9 source and documentation):** by default the sandbox
+supervisor runs in a container with host networking and connects back to the gateway
+at `127.0.0.1`. The documentation states that host mode on Docker Desktop requires
+host networking to be enabled (Docker Desktop: **Settings → Resources → Network →
+Enable host networking**).
+
+![Docker Desktop settings, Network section, with "Enable host networking" switched on](images/docker-host-networking.png)
+
+**What was and was not verified on this project's reference machine (Docker Desktop with
+WSL 2):** with that setting switched on, a `--net=host` container still could not reach a
+service listening on the WSL loopback, while a normal container could reach it through
+`host.docker.internal`; OpenShell 0.1.9 still failed with the symptom above. The setting
+may need "Apply & Restart" to take effect, which was not confirmed. The alternative
+described by upstream, `supervisor_network_mode = "bridge"` in the gateway's
+`gateway.toml`, has not been tried and is not applied by this lab.
+
+Until this is resolved, a 0.1.x run ends as `INCOMPLETE` (exit code 2) and the comparison
+shows its tests as not measured. It is never reported as a pass.

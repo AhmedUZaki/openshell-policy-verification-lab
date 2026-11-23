@@ -89,7 +89,8 @@ ovl_install() {
     IFS=: read -r comp libc required <<<"$spec"
     asset="${comp}-${arch}-unknown-linux-${libc}.tar.gz"
     sums="${comp}-checksums-sha256.txt"
-    if ! curl -fLsS --retry 3 -o "$tmp/$sums" "$base/$sums" || ! curl -fLsS --retry 3 -o "$tmp/$asset" "$base/$asset"; then
+    # curl -s (without -S) keeps an expected 404 for an optional component quiet
+    if ! curl -fLs --retry 3 -o "$tmp/$sums" "$base/$sums" || ! curl -fLs --retry 3 -o "$tmp/$asset" "$base/$asset"; then
       if [[ "$required" == 0 ]]; then
         ovl_log "  $comp is not part of release v$v; skipped."
         continue

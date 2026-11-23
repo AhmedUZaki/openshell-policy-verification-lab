@@ -299,6 +299,25 @@ try {
     assert.ok(result.payload.evidence_problems.some((item) => item.includes("measured OpenShell")));
   });
 
+  check("a requested version is labeled when no evidence exists and contradicted when evidence disagrees", () => {
+    cleanEvidence();
+    const requested = (args, version) => spawnSync(process.execPath, [analyzer, ...args], {
+      cwd: projectRoot,
+      encoding: "utf8",
+      windowsHide: true,
+      env: { ...process.env, AUDIT_REQUESTED_OPENSHELL_VERSION: version },
+    });
+    expectExit(requested(["--run-id", "never-produced"], "0.1.9"), 2, "no evidence");
+    const noEvidence = JSON.parse(fs.readFileSync(path.join(outputDir, "LATEST.json"), "utf8"));
+    assert.equal(noEvidence.openshell_version, "0.1.9");
+    assert.equal(noEvidence.openshell_version_source, "requested, no evidence");
+    makeRun("wrong-version", { openshellVersion: "0.0.116" });
+    attest("wrong-version");
+    expectExit(requested(["--run-id", "wrong-version"], "0.1.9"), 2, "request contradicted by evidence");
+    const contradicted = JSON.parse(fs.readFileSync(path.join(outputDir, "LATEST.json"), "utf8"));
+    assert.ok(contradicted.evidence_problems.some((item) => item.includes("was requested but the evidence measured")));
+  });
+
   check("version comparison shows changed tests and checks the predictions", () => {
     cleanEvidence();
     makeRun("v-old", { openshellVersion: "0.0.116", statuses: { T09: "FAIL", T32: "FAIL" } });

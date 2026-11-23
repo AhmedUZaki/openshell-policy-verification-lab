@@ -587,7 +587,7 @@ LANDLOCK_LINES="$(printf '%s\n' "$LANDLOCK_LOGS" | grep -i landlock | head -n 10
   printf '| T29 | rc=%s, marker_seen=%s | rc=%s, marker_seen=%s |\n' "$T29_C_RC" "$([[ "$T29_C_OUT" == *HIDDEN_MARKER_T07* ]] && echo yes || echo no)" "$T29_R_RC" "$([[ "$T29_R_OUT" == *HIDDEN_MARKER_T07* ]] && echo yes || echo no)"
   printf '| T30 | rc=%s, hash_changed=%s | rc=%s, hash_changed=%s |\n' "$T30_C_RC" "$([[ "$T30_C_BEFORE" != "$T30_C_AFTER" ]] && echo yes || echo no)" "$T30_R_RC" "$([[ "$T30_R_BEFORE" != "$T30_R_AFTER" ]] && echo yes || echo no)"
   printf '| T31 | rc=%s, hash_changed=%s | rc=%s, hash_changed=%s |\n' "$T31_C_RC" "$([[ "$T31_C_BEFORE" != "$T31_C_AFTER" ]] && echo yes || echo no)" "$T31_R_RC" "$([[ "$T31_R_BEFORE" != "$T31_R_AFTER" ]] && echo yes || echo no)"
-  printf '| T32 | rc=%s, final_size=%s | rc=%s, final_size=%s, hash_changed=%s |\n' "$T32_C_RC" "$T32_C_SIZE" "$T32_R_RC" "$T32_R_SIZE" "$([[ "$T32_R_BEFORE" != "$T32_R_AFTER" ]] && echo yes || echo no)"
+  printf '| T32 | rc=%s, final_size=%s | rc=%s, before=%s, after=%s, final_size=%s, hash_changed=%s |\n' "$T32_C_RC" "$T32_C_SIZE" "$T32_R_RC" "$T32_R_BEFORE" "$T32_R_AFTER" "$T32_R_SIZE" "$([[ "$T32_R_BEFORE" != "$T32_R_AFTER" ]] && echo yes || echo no)"
   printf '| T33 | rc=%s, created=%s | rc=%s, created=%s |\n' "$T33_C_RC" "$T33_C_EXISTS" "$T33_R_RC" "$T33_R_EXISTS"
   printf '| T34 | rc=%s, created=%s | rc=%s, created=%s |\n' "$T34_C_RC" "$T34_C_EXISTS" "$T34_R_RC" "$T34_R_EXISTS"
   printf '| T35 | rc=%s, marker_seen=%s | rc=%s, marker_seen=%s |\n' "$T35_C_RC" "$([[ "$T35_C_OUT" == *EXEC_MARKER_T35* ]] && echo yes || echo no)" "$T35_R_RC" "$([[ "$T35_R_OUT" == *EXEC_MARKER_T35* ]] && echo yes || echo no)"

@@ -36,6 +36,8 @@ Because the behavior appears fixed upstream, it is not a good candidate for repo
 
 ## How to run the check
 
+On Docker Desktop with WSL 2, OpenShell 0.1.x currently cannot start sandboxes on the reference machine (see `setup/README.md`, "Testing OpenShell 0.1.x ... known blocker"); until that is solved the 0.1.9 run is `INCOMPLETE`.
+
 ```bash
 bash setup/4b-install-openshell-versions.sh        # optional: download 0.0.116 and 0.1.9 ahead of time
 bash run-enforcement-audit.sh --all --compare       # runs both, writes audit-reports/COMPARISON.md

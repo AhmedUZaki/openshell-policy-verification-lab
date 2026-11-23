@@ -251,6 +251,7 @@ for version in "${VERSIONS[@]}"; do
     continue
   fi
   AUDIT_RUN_ID="$BASE_RUN_ID-os$version"
+  export AUDIT_REQUESTED_OPENSHELL_VERSION="$version"
   run_audit
   rc=$?
   [[ "$rc" -gt "$FINAL_RC" ]] && FINAL_RC="$rc"
