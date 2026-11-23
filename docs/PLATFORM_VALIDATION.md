@@ -20,10 +20,10 @@ A host may be marked empirically validated only when all of the following are re
 
 | Host | Portable tooling | Full enforcement suite |
 |---|---|---|
-| Windows 11 x86-64 through WSL 2 | Passed locally | Signed full run completed locally on 2026-11-22; analysis reported 28 `PASS`, 2 `FAIL`, 2 `EXPECTED`, 4 `KNOWN-LIMITATION`, 0 missing/inconclusive |
-| macOS Apple Silicon | Workflow prepared; result pending external execution | Not yet empirically validated |
-| Ubuntu 24.04 native | Workflow prepared; result pending external execution | Not yet empirically validated on a separate native host |
+| Windows 11 x86-64 through WSL 2 | Passed locally and in GitHub Actions (windows-latest) | Signed full run completed locally on 2026-11-22; analysis reported 28 `PASS`, 2 `FAIL`, 2 `EXPECTED`, 4 `KNOWN-LIMITATION`, 0 missing/inconclusive |
+| macOS Apple Silicon | Passed in GitHub Actions (macos-latest), run for commit `0521b04` | Not yet empirically validated |
+| Ubuntu 24.04 native | Passed in GitHub Actions (ubuntu-latest), run for commit `0521b04` | Not yet empirically validated on a separate native host |
 
-The pending rows cannot be changed to “validated” by documentation or emulation. They require evidence produced on those actual platforms.
+A passing CI job covers only the portable tooling layer: it does not run Docker, OpenShell, or T01–T36. The full-enforcement cells for macOS and Linux cannot be changed to “validated” by documentation, CI, or emulation. They require evidence produced on those actual platforms.
 
 The Windows evidence is generated and ignored local material, not part of the tracked repository. Its public-key fingerprint must be retained outside the evidence bundle for an independent chain-of-custody claim.
