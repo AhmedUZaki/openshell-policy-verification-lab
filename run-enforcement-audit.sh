@@ -26,8 +26,9 @@ Usage: bash run-enforcement-audit.sh [--all|--network-only|--filesystem-only] [-
                                      [--openshell-version V]... [--openshell-versions V1,V2] [--compare]
                                      [--keep-version]
 
-When run interactively without a scope option, the runner asks the user to
-choose network tests, filesystem tests, or both. Non-interactive jobs must
+When run interactively without a scope option, the runner first asks (Linux/WSL)
+which OpenShell version(s) to test unless a version option was given, then asks
+the user to choose network tests, filesystem tests, or both. Non-interactive jobs must
 provide an explicit scope option.
 
 OpenShell versions (Linux and WSL only):
@@ -88,6 +89,27 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Interactive run without scope or version options: first ask which OpenShell version(s) to test (Linux and WSL
+# only, the only place the runner can switch versions), then the scope. Scripts and CI pass their options and are never asked.
+if [[ -z "$SCOPE" && -t 0 && ${#VERSIONS[@]} -eq 0 && "$(uname -s)" == Linux ]]; then
+  choice=""
+  while [[ -z "$choice" ]]; do
+    printf '\nChoose the OpenShell version to test / اختر إصدار OpenShell:\n'
+    printf '  1) %s\n' "$OPENSHELL_BASELINE_VERSION"
+    printf '  2) %s\n' "$OPENSHELL_CANDIDATE_VERSION"
+    printf '  3) All (%s and %s, then compare them) / الكل مع المقارنة\n' "$OPENSHELL_BASELINE_VERSION" "$OPENSHELL_CANDIDATE_VERSION"
+    printf '  Q) Quit / خروج\n'
+    read -r -p 'Selection / الاختيار: ' choice
+    case "$choice" in
+      1) add_versions "$OPENSHELL_BASELINE_VERSION" ;;
+      2) add_versions "$OPENSHELL_CANDIDATE_VERSION" ;;
+      3) add_versions "$OPENSHELL_BASELINE_VERSION,$OPENSHELL_CANDIDATE_VERSION" ;;
+      q|Q) echo 'Cancelled.'; exit 0 ;;
+      *) echo 'Invalid selection. Enter 1, 2, 3, or Q.' >&2; choice="" ;;
+    esac
+  done
+fi
+
 if [[ -z "$SCOPE" ]]; then
   if [[ -t 0 ]]; then
     while [[ -z "$SCOPE" ]]; do
@@ -116,6 +138,7 @@ case "$SCOPE" in
   network) RUN_NETWORK=1 ;;
   filesystem) RUN_FILESYSTEM=1 ;;
 esac
+
 
 if [[ "$DRY_RUN" == 1 ]]; then
   echo "Platform: $(uname -s)"

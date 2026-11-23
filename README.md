@@ -71,7 +71,7 @@ The runner permits the intended Apple Silicon workflow but it is not marked empi
 --keep-version
 ```
 
-When no scope option is supplied in an interactive terminal, a bilingual menu is shown. Scripts and CI jobs must pass one explicit scope option.
+When no scope option is supplied in an interactive terminal, the runner shows bilingual menus. On Linux and WSL (Windows through `run-enforcement-audit.cmd`) the first one asks which OpenShell version to test: 0.0.116, 0.1.9, or all (both, then a comparison). The next asks which tests to run. Any other version is chosen with `--openshell-version`. Passing a scope option or a version option skips the questions. Scripts and CI jobs must pass one explicit scope option.
 
 | Scope | Tests | Result rows |
 |---|---|---|

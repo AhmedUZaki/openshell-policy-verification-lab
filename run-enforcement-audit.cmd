@@ -20,6 +20,9 @@ if errorlevel 1 (
   exit /b 2
 )
 
+set "VERSION_ARGS="
+if "%HAS_SCOPE%"=="0" if "%VERSIONED%"=="0" call :ask_versions
+
 if "%HAS_SCOPE%"=="0" (
   echo.
   echo Choose the tests to run:
@@ -44,9 +47,9 @@ set "SELECTED_SCOPE=--network-only"
 :scope_selected
 
 if /i "%~1"=="nopause" (
-  wsl -d Ubuntu-24.04 bash ./run-enforcement-audit.sh %SELECTED_SCOPE% %2 %3 %4 %5 %6 %7 %8 %9
+  wsl -d Ubuntu-24.04 bash ./run-enforcement-audit.sh %SELECTED_SCOPE% %VERSION_ARGS% %2 %3 %4 %5 %6 %7 %8 %9
 ) else (
-  wsl -d Ubuntu-24.04 bash ./run-enforcement-audit.sh %SELECTED_SCOPE% %*
+  wsl -d Ubuntu-24.04 bash ./run-enforcement-audit.sh %SELECTED_SCOPE% %VERSION_ARGS% %*
 )
 set "RESULT=%ERRORLEVEL%"
 
@@ -59,3 +62,26 @@ if "%DRY_RUN%"=="0" if "%RESULT%"=="2" echo Incomplete: setup, infrastructure, o
 if "%VERSIONED%"=="1" echo Per-version reports: audit-reports\by-version\ ^| comparison of two or more versions: audit-reports\COMPARISON.md
 if /i not "%~1"=="nopause" pause
 exit /b %RESULT%
+
+:ask_versions
+echo.
+echo Choose the OpenShell version to test:
+echo   1. 0.0.116
+echo   2. 0.1.9
+echo   3. All ^(0.0.116 and 0.1.9, then compare them^)
+choice /c 123 /n /m "Selection [1-3]: "
+if errorlevel 3 goto ask_all
+if errorlevel 2 goto ask_candidate
+set "VERSION_ARGS=--openshell-version 0.0.116"
+set "VERSIONED=1"
+exit /b 0
+
+:ask_candidate
+set "VERSION_ARGS=--openshell-version 0.1.9"
+set "VERSIONED=1"
+exit /b 0
+
+:ask_all
+set "VERSION_ARGS=--compare"
+set "VERSIONED=1"
+exit /b 0
