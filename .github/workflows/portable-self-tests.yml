@@ -1,0 +1,26 @@
+name: Portable analysis self-tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  analysis-integrity:
+    name: Analysis integrity (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: node --check tests/evidence-attestation.mjs && node --check tests/analyze-results.mjs && node --check tests/verify-analysis-integrity.mjs
+      - name: Run analyzer and signature fault injection
+        run: node tests/verify-analysis-integrity.mjs

@@ -2,6 +2,8 @@
 
 These tests extend the ten core claim tests without changing `docs/CLAIMS.md`. Their expectations are defined before execution, and every destructive filesystem probe has a permissive control.
 
+The network scope contains T01–T06 and T17–T20. The filesystem scope contains T07–T16 and T21–T36. A full run contains all 36 rows.
+
 | ID | Area | Probe | Predefined expectation |
 |---|---|---|---|
 | T11 | Filesystem | Shell redirection `: > file` on a `read_only` file | Denied; size and hash unchanged. |
@@ -25,14 +27,14 @@ These tests extend the ten core claim tests without changing `docs/CLAIMS.md`. T
 | T29 | Filesystem | Follow a symlink in `read_only` to an ungranted target | Target content remains inaccessible. |
 | T30 | Filesystem | Write through a symlink in `/work` whose target is `read_only` | Denied; target hash unchanged. |
 | T31 | Filesystem | Modify content through a writable `mmap` | Denied; target hash unchanged. |
-| T32 | Filesystem | Open with unusual `O_RDONLY | O_TRUNC` flags | Denied; size/hash unchanged. A failure correlates with the ABI V2 truncate gap in T09. |
+| T32 | Filesystem | Open with unusual `O_RDONLY | O_TRUNC` flags | Denied; size/hash unchanged. Analyze a failure jointly with T09; these observations alone do not identify the kernel mechanism. |
 | T33 | Filesystem | Bind a pathname UNIX socket inside `read_only` | Denied; socket absent. |
 | T34 | Filesystem | Create a FIFO inside `read_only` | Denied; FIFO absent. |
-| T35 | Filesystem | Execute a script stored under `read_only` | `EXPECTED`: execution is allowed while content mutation remains restricted, as required for read-only system paths such as `/usr`. |
+| T35 | Filesystem | Execute a script stored under `read_only` | `EXPECTED`: execution remains allowed for this policy; separate tests measure content mutation. |
 | T36 | Filesystem | Use `stat` on an otherwise ungranted file | `KNOWN-LIMITATION` if metadata is returned: Landlock does not mediate `stat`. |
 
 ## Interpretation rule
 
-A larger number of FAIL rows does not automatically mean a larger number of vulnerabilities. For example, T09, T11, and T12 may exercise different user-level interfaces to the same kernel operation. Correlated failures should be grouped into one underlying finding until evidence shows independent causes.
+A larger number of FAIL rows does not automatically mean a larger number of vulnerabilities. For example, T09, T11, and T12 may exercise different user-level interfaces to the same kernel operation. Correlated failures should be grouped into one provisional finding until evidence shows independent causes. Grouping prevents double counting; it does not by itself establish a root cause.
 
-`FAIL` means an enforcement expectation failed. `KNOWN-LIMITATION` records behavior explicitly outside Landlock's mediation scope and does not count as an independent vulnerability. `EXPECTED` records intentional product semantics. `INCONCLUSIVE` means the permissive control or test infrastructure did not establish a valid comparison.
+`FAIL` means an enforcement expectation failed. `KNOWN-LIMITATION` records behavior predefined as outside the mediation scope measured by this lab and does not count as an independent enforcement failure. `EXPECTED` records predefined product semantics. `INCONCLUSIVE` means the control, prerequisites, or test infrastructure did not establish a valid comparison.

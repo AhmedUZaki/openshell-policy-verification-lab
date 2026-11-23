@@ -2,46 +2,116 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { verifyEvidenceAttestation } from "./evidence-attestation.mjs";
+
+process.on("uncaughtException", (error) => {
+  console.error(`Analysis infrastructure error: ${error.message}`);
+  process.exit(2);
+});
+process.on("unhandledRejection", (error) => {
+  console.error(`Analysis infrastructure error: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(2);
+});
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.dirname(here);
 const outputDir = path.join(root, "audit-reports");
 fs.mkdirSync(outputDir, { recursive: true });
 
-const args = new Set(process.argv.slice(2));
-const knownArgs = new Set(["--network-only", "--filesystem-only"]);
-const unknownArgs = [...args].filter((arg) => !knownArgs.has(arg));
-if (unknownArgs.length || (args.has("--network-only") && args.has("--filesystem-only"))) {
-  console.error("Usage: analyze-results.mjs [--network-only|--filesystem-only]");
+let scope = "all";
+let requestedRunId = null;
+const argv = process.argv.slice(2);
+for (let index = 0; index < argv.length; index += 1) {
+  const arg = argv[index];
+  if (arg === "--network-only" && scope === "all") scope = "network";
+  else if (arg === "--filesystem-only" && scope === "all") scope = "filesystem";
+  else if (arg === "--run-id" && !requestedRunId) requestedRunId = argv[++index] ?? null;
+  else {
+    console.error("Usage: analyze-results.mjs [--network-only|--filesystem-only] [--run-id ID]");
+    process.exit(2);
+  }
+}
+if (!requestedRunId && argv.includes("--run-id")) {
+  console.error("--run-id requires a value.");
   process.exit(2);
 }
-const scope = args.has("--network-only") ? "network" : args.has("--filesystem-only") ? "filesystem" : "all";
-
-function latestReport(directory, prefix) {
-  if (!fs.existsSync(directory)) return null;
-  return fs.readdirSync(directory)
-    .filter((name) => name.startsWith(prefix) && name.endsWith(".md"))
-    .sort()
-    .at(-1) ?? null;
+if (requestedRunId && !/^[A-Za-z0-9._-]+$/.test(requestedRunId)) {
+  console.error("Invalid run ID. Use only letters, digits, dot, underscore, and hyphen.");
+  process.exit(2);
 }
 
-function parseRows(file, wanted) {
+function reportRuns(directory, prefix) {
+  if (!fs.existsSync(directory)) return new Map();
+  const runs = new Map();
+  for (const name of fs.readdirSync(directory).sort()) {
+    if (!name.startsWith(prefix) || !name.endsWith(".md")) continue;
+    const runId = name.slice(prefix.length, -3);
+    if (runId && !runId.endsWith("-ar")) {
+      runs.set(runId, { name, mtimeMs: fs.statSync(path.join(directory, name)).mtimeMs });
+    }
+  }
+  return runs;
+}
+
+function latestRunId(runs, allowedIds = [...runs.keys()]) {
+  return allowedIds
+    .map((id) => ({ id, mtimeMs: runs.get(id)?.mtimeMs ?? 0 }))
+    .sort((a, b) => a.mtimeMs - b.mtimeMs || a.id.localeCompare(b.id))
+    .at(-1)?.id ?? null;
+}
+
+function parseRows(file, wanted, expectedRunId, evidenceProblems) {
   const rows = {};
   if (!file) return rows;
   const text = fs.readFileSync(file, "utf8");
+  const reportedRunId = text.match(/^- Run:\s*`([^`]+)`\s*$/m)?.[1] ?? null;
+  if (reportedRunId !== expectedRunId) {
+    evidenceProblems.push(`${path.relative(root, file)} reports run ID ${reportedRunId ?? "missing"}, expected ${expectedRunId}.`);
+  }
+  const evidenceComplete = text.match(/^- Evidence complete:\s*`(yes|no)`\s*$/m)?.[1] ?? null;
+  if (evidenceComplete !== "yes") {
+    evidenceProblems.push(`${path.relative(root, file)} does not certify complete evidence collection.`);
+  }
   for (const line of text.split(/\r?\n/)) {
     const match = line.match(/^\|\s*(T\d{2})\s*\|\s*`?([A-Z-]+)`?\s*\|\s*(.*?)\s*\|$/);
     if (match && wanted.has(match[1])) {
-      rows[match[1]] = { status: match[2], evidence: match[3] };
+      if (rows[match[1]]) {
+        evidenceProblems.push(`${path.relative(root, file)} contains duplicate result row ${match[1]}.`);
+      } else {
+        rows[match[1]] = { status: match[2], evidence: match[3] };
+      }
     }
   }
   return rows;
 }
 
+function requireEvidenceFile(directory, name, evidenceProblems, allowEmpty = false) {
+  const file = path.join(directory, name);
+  if (!fs.existsSync(file)) {
+    evidenceProblems.push(`Missing evidence file: ${path.relative(root, file)}.`);
+  } else if (!allowEmpty && fs.statSync(file).size === 0) {
+    evidenceProblems.push(`Empty evidence file: ${path.relative(root, file)}.`);
+  }
+}
+
 const networkDir = path.join(here, "network", "results");
 const filesystemDir = path.join(here, "filesystem", "results");
-const networkName = latestReport(networkDir, "network-");
-const filesystemName = latestReport(filesystemDir, "filesystem-");
+const networkRuns = reportRuns(networkDir, "network-");
+const filesystemRuns = reportRuns(filesystemDir, "filesystem-");
+let selectedRunId = requestedRunId;
+if (!selectedRunId) {
+  if (scope === "network") selectedRunId = latestRunId(networkRuns);
+  else if (scope === "filesystem") selectedRunId = latestRunId(filesystemRuns);
+  else {
+    const commonIds = [...networkRuns.keys()].filter((id) => filesystemRuns.has(id));
+    selectedRunId = commonIds
+      .map((id) => ({ id, mtimeMs: Math.max(networkRuns.get(id).mtimeMs, filesystemRuns.get(id).mtimeMs) }))
+      .sort((a, b) => a.mtimeMs - b.mtimeMs || a.id.localeCompare(b.id))
+      .at(-1)?.id ?? null;
+  }
+}
+const networkName = selectedRunId ? networkRuns.get(selectedRunId)?.name ?? null : null;
+const filesystemName = selectedRunId ? filesystemRuns.get(selectedRunId)?.name ?? null : null;
 const networkFile = networkName ? path.join(networkDir, networkName) : null;
 const filesystemFile = filesystemName ? path.join(filesystemDir, filesystemName) : null;
 
@@ -51,22 +121,25 @@ const filesystemIds = new Set([
   "T21", "T22", "T23", "T24", "T25", "T26", "T27", "T28", "T29", "T30",
   "T31", "T32", "T33", "T34", "T35", "T36",
 ]);
+const evidenceProblems = [];
 const results = {
-  ...parseRows(networkFile, networkIds),
-  ...parseRows(filesystemFile, filesystemIds),
+  ...parseRows(networkFile, networkIds, selectedRunId, evidenceProblems),
+  ...parseRows(filesystemFile, filesystemIds, selectedRunId, evidenceProblems),
 };
-
-// Preserve the measured evidence while applying the semantics established by
-// the documented implementation review. These are not independent bypasses.
-if (results.T16?.status === "FAIL") {
-  results.T16 = { ...results.T16, measured_status: "FAIL", status: "KNOWN-LIMITATION" };
+if (networkFile && scope !== "filesystem") {
+  requireEvidenceFile(networkDir, `network-${selectedRunId}.raw.log`, evidenceProblems);
+  for (const suffix of ["host-a.json", "host-b.json", "effective-policy-initial.yaml", "effective-policy-final.yaml"]) {
+    requireEvidenceFile(networkDir, `network-${selectedRunId}-${suffix}`, evidenceProblems);
+  }
+  requireEvidenceFile(networkDir, `network-${selectedRunId}-openshell.log`, evidenceProblems, true);
 }
-if (results.T18?.status === "FAIL") {
-  results.T18 = { ...results.T18, measured_status: "FAIL", status: "EXPECTED" };
+if (filesystemFile && scope !== "network") {
+  requireEvidenceFile(filesystemDir, `filesystem-${selectedRunId}.raw.log`, evidenceProblems);
 }
-if (results.T35?.status === "FAIL" && results.T35.evidence.includes("ran successfully")) {
-  results.T35 = { ...results.T35, measured_status: "FAIL", status: "EXPECTED" };
-}
+const attestation = selectedRunId
+  ? verifyEvidenceAttestation({ root, runId: selectedRunId, scope })
+  : { verified: false, fingerprint: null, files: 0, problems: ["No run ID was available for evidence attestation verification."] };
+evidenceProblems.push(...attestation.problems);
 
 const expected = scope === "network"
   ? [...networkIds]
@@ -85,40 +158,45 @@ for (const item of Object.values(results)) {
 
 let overall = "PASS";
 let exitCode = 0;
-if (missing.length || counts.INCONCLUSIVE || counts.OTHER) {
+if (missing.length || evidenceProblems.length || counts.INCONCLUSIVE || counts.OTHER) {
   overall = "INCOMPLETE";
   exitCode = 2;
 } else if (counts.FAIL) {
   overall = "MEASURED_FAILURE";
   exitCode = 1;
+} else if (counts["KNOWN-LIMITATION"]) {
+  overall = "PASS_WITH_LIMITATIONS";
 }
 
 const interpretations = [];
 if ([...networkIds].every((id) => ["PASS", "EXPECTED"].includes(results[id]?.status))) {
   interpretations.push("All core and extended network tests matched the configured enforcement expectations.");
 }
-if ([...filesystemIds].every((id) => ["PASS", "KNOWN-LIMITATION"].includes(results[id]?.status))) {
+if ([...filesystemIds].every((id) => ["PASS", "EXPECTED", "KNOWN-LIMITATION"].includes(results[id]?.status))) {
   interpretations.push("All filesystem enforcement expectations passed; KNOWN-LIMITATION rows separately record documented Landlock scope limits.");
 } else if (results.T09?.status === "FAIL") {
-  interpretations.push("T09 confirmed a content-integrity gap: pathname truncate changed a read-only fixture because OpenShell v0.0.116 applies Landlock ABI V2.");
+  interpretations.push("T09 measured a content-integrity failure: pathname truncation changed a fixture that the applied policy marked read-only. The test result alone does not identify the underlying mechanism.");
 }
 const extendedFailures = expected.filter((id) => Number(id.slice(1)) > 10 && results[id]?.status === "FAIL");
 const unreviewedExtendedFailures = extendedFailures.filter((id) => !(id === "T32" && results.T09?.status === "FAIL"));
 const knownLimitations = expected.filter((id) => results[id]?.status === "KNOWN-LIMITATION");
 if (results.T16?.status === "KNOWN-LIMITATION") interpretations.push("T16 records a known Landlock limitation: chmod metadata changes are outside Landlock mediation.");
-if (results.T18?.status === "EXPECTED") interpretations.push("T18 matches OpenShell's intentional GET-to-HEAD method semantics; the explicit-rule documentation does not make that expansion clear.");
-if (results.T35?.status === "EXPECTED") interpretations.push("T35 confirms that OpenShell read-only paths remain executable while content mutation is restricted; this is required for read-only system paths such as /usr.");
+if (results.T18?.status === "EXPECTED") interpretations.push("T18 matched the suite's predefined GET-to-HEAD method expectation.");
+if (results.T35?.status === "EXPECTED") interpretations.push("T35 observed that execution from the read-only path remained allowed; content-mutation restrictions are measured by separate tests.");
 if (unreviewedExtendedFailures.length) interpretations.push(`Extended robustness failures requiring semantic review: ${unreviewedExtendedFailures.join(", ")}.`);
-if (results.T09?.status === "FAIL" && results.T32?.status === "FAIL") interpretations.push("T09 and T32 are correlated manifestations of one ABI V2 truncation root cause, not two independent findings.");
+if (results.T09?.status === "FAIL" && results.T32?.status === "FAIL") interpretations.push("T09 and T32 are correlated observations of truncation behavior and should be grouped as one provisional finding. Attributing a specific root cause requires separate runtime evidence.");
 if (knownLimitations.length) interpretations.push(`Documented Landlock scope limitations observed: ${knownLimitations.join(", ")}. These do not count as independent enforcement failures.`);
 if (missing.length) interpretations.push(`Missing test results: ${missing.join(", ")}.`);
+if (evidenceProblems.length) interpretations.push(`Evidence integrity problems: ${evidenceProblems.join(" ")}`);
 if (counts.INCONCLUSIVE) interpretations.push(`${counts.INCONCLUSIVE} test(s) were inconclusive and require rerun or environment repair.`);
 
-const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "Z");
+const generatedAt = new Date();
+const stamp = generatedAt.toISOString().replace(/[-:.]/g, "");
 const payload = {
-  schema_version: 1,
+  schema_version: 3,
   scope,
-  generated_at: new Date().toISOString(),
+  run_id: selectedRunId,
+  generated_at: generatedAt.toISOString(),
   platform: { os: os.platform(), release: os.release(), arch: os.arch() },
   sources: {
     network: scope !== "filesystem" && networkFile ? path.relative(root, networkFile).replaceAll("\\", "/") : null,
@@ -128,6 +206,12 @@ const payload = {
   exit_code: exitCode,
   counts,
   missing,
+  evidence_problems: evidenceProblems,
+  evidence_attestation: {
+    verified: attestation.verified,
+    public_key_fingerprint_sha256: attestation.fingerprint,
+    signed_file_count: attestation.files,
+  },
   results,
   interpretations,
 };
@@ -139,9 +223,12 @@ const markdown = [
   `- Generated: \`${payload.generated_at}\``,
   `- Overall: \`${overall}\``,
   `- Scope: \`${scope}\``,
+  `- Run ID: \`${selectedRunId ?? "missing"}\``,
   `- Platform: \`${payload.platform.os} ${payload.platform.arch} ${payload.platform.release}\``,
   `- Network source: \`${payload.sources.network ?? "missing"}\``,
   `- Filesystem source: \`${payload.sources.filesystem ?? "missing"}\``,
+  `- Evidence signature: \`${attestation.verified ? "VERIFIED" : "NOT VERIFIED"}\``,
+  `- Signing-key fingerprint: \`${attestation.fingerprint ?? "missing"}\``,
   "",
   "## Result matrix",
   "",
@@ -155,12 +242,13 @@ const markdown = [
   "",
   "## Machine-readable outcome",
   "",
-  `Exit code: \`${exitCode}\` (0 = no enforcement failures; documented limitations may be present, 1 = measured FAIL, 2 = incomplete/inconclusive).`,
+  `Exit code: \`${exitCode}\` (0 = no measured enforcement failures; PASS_WITH_LIMITATIONS remains explicit, 1 = measured FAIL, 2 = incomplete/inconclusive).`,
   "",
 ].join("\n");
 
 const arabicOverall = {
   PASS: "كل التوقعات نجحت",
+  PASS_WITH_LIMITATIONS: "نجحت توقعات الإنفاذ، مع وجود قيود موثقة ظاهرة بوضوح",
   MEASURED_FAILURE: "يوجد فشل مقاس في أحد توقعات الاختبار",
   INCOMPLETE: "النتائج ناقصة أو غير حاسمة",
 }[overall];
@@ -170,9 +258,12 @@ const markdownAr = [
   `- وقت الإنشاء: \`${payload.generated_at}\``,
   `- النتيجة العامة: \`${overall}\` — ${arabicOverall}`,
   `- النطاق: \`${scope}\``,
+  `- معرّف التشغيل: \`${selectedRunId ?? "غير موجود"}\``,
   `- المنصة: \`${payload.platform.os} ${payload.platform.arch} ${payload.platform.release}\``,
   `- مصدر الشبكة: \`${payload.sources.network ?? "غير موجود"}\``,
   `- مصدر الملفات: \`${payload.sources.filesystem ?? "غير موجود"}\``,
+  `- توقيع الأدلة: \`${attestation.verified ? "VERIFIED" : "NOT VERIFIED"}\``,
+  `- بصمة مفتاح التوقيع: \`${attestation.fingerprint ?? "غير موجودة"}\``,
   "",
   "## مصفوفة النتائج",
   "",
@@ -186,16 +277,17 @@ const markdownAr = [
     ? "- وافقت جميع اختبارات الشبكة الأساسية والموسعة توقعات الإنفاذ المحددة."
     : "- توجد نتيجة شبكة غير ناجحة أو ناقصة وتحتاج مراجعة."] : []),
   ...(scope !== "network" ? [results.T09?.status === "FAIL"
-    ? "- أكد T09 فجوة في سلامة المحتوى: غيّرت truncate ملف read_only لأن OpenShell v0.0.116 يطبق Landlock ABI V2."
+    ? "- قاس T09 فشلًا في سلامة المحتوى: غيّرت truncate ملفًا صنفته السياسة المطبقة كـ read_only. لا تكفي نتيجة الاختبار وحدها لتحديد الآلية المسببة."
     : "- لم يسجل T09 فشلًا في أحدث جولة."] : []),
   ...(unreviewedExtendedFailures.length ? [`- إخفاقات robustness التي ما زالت تحتاج مراجعة دلالية: ${unreviewedExtendedFailures.join(", ")}.`] : []),
   ...(knownLimitations.length ? [`- قيود Landlock الموثقة التي ظهرت: ${knownLimitations.join(", ")}. لا تُحسب هذه كإخفاقات إنفاذ مستقلة.`] : []),
-  ...(results.T18?.status === "EXPECTED" ? ["- يطابق T18 السلوك المقصود في OpenShell الذي يجعل HEAD يطابق GET؛ لكن توثيق القواعد الصريحة لا يوضح هذا التوسّع جيدًا."] : []),
-  ...(results.T35?.status === "EXPECTED" ? ["- يؤكد T35 أن مسارات read_only تبقى قابلة للتنفيذ مع منع تعديل المحتوى؛ وهذا مطلوب لمسارات النظام مثل /usr."] : []),
-  ...(results.T09?.status === "FAIL" && results.T32?.status === "FAIL" ? ["- T09 وT32 مظهران مرتبطان لسبب جذري واحد هو فجوة truncate في ABI V2، وليسا نتيجتين مستقلتين."] : []),
+  ...(results.T18?.status === "EXPECTED" ? ["- طابق T18 التوقع المحدد مسبقًا في المختبر لمعاملة HEAD مع قاعدة GET."] : []),
+  ...(results.T35?.status === "EXPECTED" ? ["- لاحظ T35 أن التنفيذ من مسار read_only ظل مسموحًا؛ وتقيس اختبارات منفصلة قيود تعديل المحتوى."] : []),
+  ...(results.T09?.status === "FAIL" && results.T32?.status === "FAIL" ? ["- T09 وT32 ملاحظتان مترابطتان لسلوك truncate وتُجمعان كنتيجة أولية واحدة. يحتاج تحديد سبب جذري بعينه إلى دليل تشغيل منفصل."] : []),
   ...(missing.length ? [`- النتائج المفقودة: ${missing.join(", ")}.`] : []),
+  ...(evidenceProblems.length ? [`- مشكلات سلامة الأدلة: ${evidenceProblems.join(" ")}`] : []),
   "",
-  `رمز الخروج: \`${exitCode}\` (0 لا توجد إخفاقات إنفاذ، وقد توجد قيود موثقة؛ 1 فشل مقاس؛ 2 نتيجة ناقصة أو غير حاسمة).`,
+  `رمز الخروج: \`${exitCode}\` (0 لا توجد إخفاقات إنفاذ مقاسة، وتظل PASS_WITH_LIMITATIONS ظاهرة بوضوح؛ 1 فشل مقاس؛ 2 نتيجة ناقصة أو غير حاسمة).`,
   "",
 ].join("\n");
 

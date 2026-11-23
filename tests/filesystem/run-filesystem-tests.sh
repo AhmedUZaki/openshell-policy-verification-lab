@@ -4,9 +4,12 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STATE_FILE="$ROOT/tests/filesystem/.state/filesystem.env"
 RESULTS_DIR="$ROOT/tests/filesystem/results"
-STAMP="$(date +%Y%m%d-%H%M%S)"
+STAMP="${AUDIT_RUN_ID:-$(date +%Y%m%d-%H%M%S)}"
+[[ "$STAMP" =~ ^[A-Za-z0-9._-]+$ ]] || { echo 'The audit run ID contains unsafe characters.' >&2; exit 2; }
 REPORT="$RESULTS_DIR/filesystem-$STAMP.md"
 RAWLOG="$RESULTS_DIR/filesystem-$STAMP.raw.log"
+OBS_ERROR_FILE="$ROOT/tests/filesystem/.state/observation-error"
+[[ ! -e "$REPORT" && ! -e "$RAWLOG" ]] || { echo "Result files already exist for run ID: $STAMP" >&2; exit 2; }
 
 export PATH="$HOME/.local/bin:$PATH"
 
@@ -18,54 +21,87 @@ fi
 source "$STATE_FILE"
 mkdir -p "$RESULTS_DIR"
 : >"$RAWLOG"
+rm -f "$OBS_ERROR_FILE"
 
 run_sbx() {
   local name="$1" label="$2" command="$3"
-  local output rc
-  output="$(openshell sandbox exec --name "$name" --no-tty --timeout 40 -- sh -c "$command" 2>&1)"
-  rc=$?
+  local output raw_output transport_rc rc
+  raw_output="$(openshell sandbox exec --name "$name" --no-tty --timeout 40 -- \
+    sh -c "( $command ); audit_command_rc=\$?; printf '\n__AUDIT_COMMAND_RC=%s\n' \"\$audit_command_rc\"; exit 0" 2>&1)"
+  transport_rc=$?
+  RUN_INFRA=0
+  if [[ "$transport_rc" -ne 0 || ! "$raw_output" =~ __AUDIT_COMMAND_RC=([0-9]+) ]]; then
+    RUN_INFRA=1
+    rc=125
+    output="$raw_output"
+    touch "$OBS_ERROR_FILE"
+  else
+    rc="${BASH_REMATCH[1]}"
+    output="$(printf '%s\n' "$raw_output" | sed '/^__AUDIT_COMMAND_RC=[0-9][0-9]*$/d')"
+  fi
   {
-    printf '\n===== %s | sandbox=%s | rc=%s =====\n' "$label" "$name" "$rc"
-    printf '%s\n' "$output"
+    printf '\n===== %s | sandbox=%s | command_rc=%s | infrastructure_error=%s =====\n' "$label" "$name" "$rc" "$RUN_INFRA"
+    printf '%s\n' "$raw_output"
   } >>"$RAWLOG"
   RUN_OUTPUT="$output"
   RUN_RC=$rc
 }
 
 hash_of() {
-  local name="$1" path="$2"
-  openshell sandbox exec --name "$name" --no-tty --timeout 20 -- \
-    sh -c "sha256sum '$path' 2>/dev/null | cut -d' ' -f1" 2>/dev/null
+  local name="$1" path="$2" output rc
+  output="$(openshell sandbox exec --name "$name" --no-tty --timeout 20 -- \
+    sh -c "if test -f '$path'; then value=\$(sha256sum '$path' 2>/dev/null) || exit 3; printf '%s' \"\${value%% *}\"; else printf MISSING; fi" 2>/dev/null)"; rc=$?
+  [[ "$rc" -eq 0 ]] || { touch "$OBS_ERROR_FILE"; return 2; }
+  printf '%s\n' "$output"
 }
 
 size_of() {
   local name="$1" path="$2"
-  openshell sandbox exec --name "$name" --no-tty --timeout 20 -- \
-    sh -c "stat -c '%s' '$path' 2>/dev/null" 2>/dev/null
+  local output rc
+  output="$(openshell sandbox exec --name "$name" --no-tty --timeout 20 -- \
+    sh -c "stat -c '%s' '$path' 2>/dev/null" 2>/dev/null)"; rc=$?
+  [[ "$rc" -eq 0 ]] || { touch "$OBS_ERROR_FILE"; return 2; }
+  printf '%s\n' "$output"
 }
 
 exists() {
-  local name="$1" path="$2"
-  openshell sandbox exec --name "$name" --no-tty --timeout 20 -- \
-    sh -c "test -e '$path'" >/dev/null 2>&1
+  local name="$1" path="$2" output rc
+  output="$(openshell sandbox exec --name "$name" --no-tty --timeout 20 -- \
+    sh -c "if test -e '$path'; then printf EXISTS; else printf MISSING; fi" 2>/dev/null)"; rc=$?
+  [[ "$rc" -eq 0 ]] || { touch "$OBS_ERROR_FILE"; return 2; }
+  [[ "$output" == EXISTS ]]
 }
 
 mode_of() {
   local name="$1" path="$2"
-  openshell sandbox exec --name "$name" --no-tty --timeout 20 -- \
-    sh -c "stat -c '%a' '$path' 2>/dev/null" 2>/dev/null
+  local output rc
+  output="$(openshell sandbox exec --name "$name" --no-tty --timeout 20 -- \
+    sh -c "stat -c '%a' '$path' 2>/dev/null" 2>/dev/null)"; rc=$?
+  [[ "$rc" -eq 0 ]] || { touch "$OBS_ERROR_FILE"; return 2; }
+  printf '%s\n' "$output"
 }
 
 mtime_of() {
   local name="$1" path="$2"
-  openshell sandbox exec --name "$name" --no-tty --timeout 20 -- \
-    sh -c "stat -c '%Y' '$path' 2>/dev/null" 2>/dev/null
+  local output rc
+  output="$(openshell sandbox exec --name "$name" --no-tty --timeout 20 -- \
+    sh -c "stat -c '%Y' '$path' 2>/dev/null" 2>/dev/null)"; rc=$?
+  [[ "$rc" -eq 0 ]] || { touch "$OBS_ERROR_FILE"; return 2; }
+  printf '%s\n' "$output"
 }
 
 xattr_of() {
   local name="$1" path="$2"
-  openshell sandbox exec --name "$name" --no-tty --timeout 20 -- \
-    sh -c "getfattr --only-values -n user.audit '$path' 2>/dev/null" 2>/dev/null
+  local output rc
+  output="$(openshell sandbox exec --name "$name" --no-tty --timeout 20 -- \
+    sh -c "getfattr --only-values -n user.audit '$path' 2>/dev/null || true" 2>/dev/null)"; rc=$?
+  [[ "$rc" -eq 0 ]] || { touch "$OBS_ERROR_FILE"; return 2; }
+  printf '%s\n' "$output"
+}
+
+sandbox_is_healthy() {
+  local name="$1"
+  [[ "$(openshell sandbox exec --name "$name" --no-tty --timeout 10 -- sh -c 'printf AUDIT_SANDBOX_OK' 2>/dev/null)" == *AUDIT_SANDBOX_OK* ]]
 }
 
 printf 'Checking pristine fixtures...\n'
@@ -78,7 +114,7 @@ for name in "$RESTRICTIVE_NAME" "$PERMISSIVE_NAME"; do
     printf 'T09 fixture is already empty in %s. Recreate the sandboxes.\n' "$name" >&2
     exit 2
   fi
-  for path in hardlink.txt symlink-source.txt utime.txt xattr.txt cross-rename.txt copy-out.txt symlink-write.txt mmap.txt rdonly-truncate.txt execute-t35.sh; do
+  for path in modify.txt truncate.txt shell-truncate.txt python-open.txt overwrite.txt rename.txt chmod.txt hardlink.txt symlink-source.txt utime.txt xattr.txt cross-rename.txt copy-out.txt symlink-write.txt mmap.txt rdonly-truncate.txt execute-t35.sh; do
     if ! exists "$name" "/opt/claims-fixtures/readonly/$path"; then
       printf 'Extended fixture %s is missing in %s. Recreate the sandboxes.\n' "$path" "$name" >&2
       exit 2
@@ -279,6 +315,11 @@ T35_R_RC=$RUN_RC; T35_R_OUT=$RUN_OUTPUT
 run_sbx "$RESTRICTIVE_NAME" T36-restrictive "stat -c '%n:%s:%a' /opt/claims-fixtures/hidden/read.txt"
 T36_R_RC=$RUN_RC; T36_R_OUT=$RUN_OUTPUT
 
+if [[ -f "$OBS_ERROR_FILE" ]] || ! sandbox_is_healthy "$PERMISSIVE_NAME" || ! sandbox_is_healthy "$RESTRICTIVE_NAME"; then
+  printf 'Infrastructure or observation failure detected. No enforcement verdicts will be inferred from generic command errors.\n' >&2
+  exit 2
+fi
+
 if [[ $T07_C_RC -ne 0 || "$T07_C_OUT" != *HIDDEN_MARKER_T07* ]]; then
   T07_VERDICT=INCONCLUSIVE; T07_DETAIL="Permissive read control failed"
 elif [[ $T07_R_RC -ne 0 && "$T07_R_OUT" != *HIDDEN_MARKER_T07* ]]; then
@@ -351,12 +392,14 @@ else
   T15_VERDICT=FAIL; T15_DETAIL="Creation rc=$T15_R_RC; file_exists=$T15_R_EXISTS"
 fi
 
-if [[ $T16_C_RC -ne 0 || "$T16_C_AFTER" != 600 ]]; then
+if [[ $T16_C_RC -ne 0 || "$T16_C_AFTER" != 600 || -z "$T16_R_BEFORE" || -z "$T16_R_AFTER" ]]; then
   T16_VERDICT=INCONCLUSIVE; T16_DETAIL="Permissive chmod control failed"
-elif [[ $T16_R_RC -ne 0 && "$T16_R_BEFORE" == "$T16_R_AFTER" ]]; then
-  T16_VERDICT=PASS; T16_DETAIL="chmod denied; mode unchanged"
-else
+elif [[ "$T16_R_BEFORE" == "$T16_R_AFTER" ]]; then
+  T16_VERDICT=PASS; T16_DETAIL="chmod did not change mode; rc=$T16_R_RC"
+elif [[ "$T16_R_AFTER" == 600 ]]; then
   T16_VERDICT=KNOWN-LIMITATION; T16_DETAIL="chmod changed metadata as Landlock does not mediate chmod; rc=$T16_R_RC before=$T16_R_BEFORE after=$T16_R_AFTER"
+else
+  T16_VERDICT=FAIL; T16_DETAIL="chmod produced an unexpected mode; rc=$T16_R_RC before=$T16_R_BEFORE after=$T16_R_AFTER"
 fi
 
 if [[ $T21_C_RC -ne 0 || "$T21_C_EXISTS" != yes ]]; then
@@ -391,20 +434,24 @@ else
   T24_VERDICT=FAIL; T24_DETAIL="rmdir rc=$T24_R_RC; directory_exists=$T24_R_EXISTS"
 fi
 
-if [[ $T25_C_RC -ne 0 || "$T25_C_BEFORE" == "$T25_C_AFTER" ]]; then
+if [[ $T25_C_RC -ne 0 || "$T25_C_BEFORE" == "$T25_C_AFTER" || -z "$T25_R_BEFORE" || -z "$T25_R_AFTER" ]]; then
   T25_VERDICT=INCONCLUSIVE; T25_DETAIL="Permissive timestamp control failed"
-elif [[ $T25_R_RC -ne 0 && "$T25_R_BEFORE" == "$T25_R_AFTER" ]]; then
-  T25_VERDICT=PASS; T25_DETAIL="Timestamp change denied"
-else
+elif [[ "$T25_R_BEFORE" == "$T25_R_AFTER" ]]; then
+  T25_VERDICT=PASS; T25_DETAIL="Timestamp did not change; rc=$T25_R_RC"
+elif [[ "$T25_R_AFTER" == 1000000000 ]]; then
   T25_VERDICT=KNOWN-LIMITATION; T25_DETAIL="utime metadata changed; Landlock does not mediate utime; rc=$T25_R_RC before=$T25_R_BEFORE after=$T25_R_AFTER"
+else
+  T25_VERDICT=FAIL; T25_DETAIL="utime produced an unexpected timestamp; rc=$T25_R_RC before=$T25_R_BEFORE after=$T25_R_AFTER"
 fi
 
 if [[ $T26_C_RC -ne 0 || "$T26_C_VALUE" != control ]]; then
   T26_VERDICT=INCONCLUSIVE; T26_DETAIL="Permissive xattr control failed"
-elif [[ $T26_R_RC -ne 0 && -z "$T26_R_VALUE" ]]; then
-  T26_VERDICT=PASS; T26_DETAIL="Extended-attribute change denied"
-else
+elif [[ -z "$T26_R_VALUE" ]]; then
+  T26_VERDICT=PASS; T26_DETAIL="Extended attribute did not change; rc=$T26_R_RC"
+elif [[ "$T26_R_VALUE" == restrictive ]]; then
   T26_VERDICT=KNOWN-LIMITATION; T26_DETAIL="user xattr changed; Landlock does not mediate setxattr; rc=$T26_R_RC value=$T26_R_VALUE"
+else
+  T26_VERDICT=FAIL; T26_DETAIL="setxattr produced an unexpected value; rc=$T26_R_RC value=$T26_R_VALUE"
 fi
 
 if [[ $T27_C_RC -ne 0 || "$T27_C_OLD" != no || "$T27_C_NEW" != yes ]]; then
@@ -452,7 +499,7 @@ if [[ $T32_C_RC -ne 0 || "$T32_C_SIZE" != 0 ]]; then
 elif [[ $T32_R_RC -ne 0 && "$T32_R_BEFORE" == "$T32_R_AFTER" && "$T32_R_SIZE" != 0 ]]; then
   T32_VERDICT=PASS; T32_DETAIL="O_RDONLY|O_TRUNC denied; content unchanged"
 else
-  T32_VERDICT=FAIL; T32_DETAIL="O_RDONLY|O_TRUNC changed content under ABI V2; rc=$T32_R_RC size=$T32_R_SIZE"
+  T32_VERDICT=FAIL; T32_DETAIL="O_RDONLY|O_TRUNC changed content under the applied read_only policy; rc=$T32_R_RC size=$T32_R_SIZE"
 fi
 
 if [[ $T33_C_RC -ne 0 || "$T33_C_EXISTS" != yes ]]; then
@@ -481,21 +528,26 @@ fi
 
 if [[ $T36_C_RC -ne 0 || -z "$T36_C_OUT" ]]; then
   T36_VERDICT=INCONCLUSIVE; T36_DETAIL="Permissive stat control failed"
-elif [[ $T36_R_RC -ne 0 || -z "$T36_R_OUT" ]]; then
+elif [[ $T36_R_RC -ne 0 && -z "$T36_R_OUT" ]]; then
   T36_VERDICT=PASS; T36_DETAIL="Metadata lookup on ungranted path denied"
-else
+elif [[ $T36_R_RC -eq 0 && -n "$T36_R_OUT" ]]; then
   T36_VERDICT=KNOWN-LIMITATION; T36_DETAIL="stat exposed path metadata; Landlock does not mediate stat"
+else
+  T36_VERDICT=INCONCLUSIVE; T36_DETAIL="stat returned inconsistent status/output; rc=$T36_R_RC"
 fi
 
-OPEN_VERSION="$(openshell --version 2>&1 | tail -n 1)"
+EVIDENCE_COMPLETE=yes
+OPEN_VERSION="$(openshell --version 2>&1 | tail -n 1)" || EVIDENCE_COMPLETE=no
 KERNEL="$(uname -r)"
-POLICY_RESTRICTIVE="$(openshell policy get "$RESTRICTIVE_NAME" --full 2>&1)"
-POLICY_PERMISSIVE="$(openshell policy get "$PERMISSIVE_NAME" --full 2>&1)"
-LANDLOCK_LINES="$(openshell logs "$RESTRICTIVE_NAME" --source sandbox -n 300 2>&1 | grep -i landlock | head -n 10 || true)"
+POLICY_RESTRICTIVE="$(openshell policy get "$RESTRICTIVE_NAME" --full 2>&1)" || EVIDENCE_COMPLETE=no
+POLICY_PERMISSIVE="$(openshell policy get "$PERMISSIVE_NAME" --full 2>&1)" || EVIDENCE_COMPLETE=no
+LANDLOCK_LOGS="$(openshell logs "$RESTRICTIVE_NAME" --source sandbox -n 300 2>&1)" || EVIDENCE_COMPLETE=no
+LANDLOCK_LINES="$(printf '%s\n' "$LANDLOCK_LOGS" | grep -i landlock | head -n 10 || true)"
 
 {
   printf '# M4 filesystem results\n\n'
   printf -- '- Run: `%s`\n' "$STAMP"
+  printf -- '- Evidence complete: `%s`\n' "$EVIDENCE_COMPLETE"
   printf -- '- OpenShell: `%s`\n' "$OPEN_VERSION"
   printf -- '- Kernel: `%s`\n' "$KERNEL"
   printf -- '- Restrictive sandbox: `%s`\n' "$RESTRICTIVE_NAME"
@@ -553,8 +605,14 @@ for id in T07 T08 T09 T10 T11 T12 T13 T14 T15 T16 T21 T22 T23 T24 T25 T26 T27 T2
 done
 printf 'Report: %s\nRaw log: %s\n' "$REPORT" "$RAWLOG"
 
+HAS_FAIL=0
+HAS_INCONCLUSIVE=0
 for id in T07 T08 T09 T10 T11 T12 T13 T14 T15 T16 T21 T22 T23 T24 T25 T26 T27 T28 T29 T30 T31 T32 T33 T34 T35 T36; do
   verdict_var="${id}_VERDICT"
-  [[ "${!verdict_var}" == FAIL ]] && exit 1
+  [[ "${!verdict_var}" == FAIL ]] && HAS_FAIL=1
+  [[ "${!verdict_var}" == INCONCLUSIVE ]] && HAS_INCONCLUSIVE=1
 done
+[[ "$HAS_INCONCLUSIVE" -eq 0 ]] || exit 2
+[[ "$EVIDENCE_COMPLETE" == yes ]] || exit 2
+[[ "$HAS_FAIL" -eq 0 ]] || exit 1
 exit 0

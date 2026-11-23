@@ -8,6 +8,11 @@ tests/filesystem/results/*
 !tests/filesystem/results/.gitkeep
 tests/network/results/*
 !tests/network/results/.gitkeep
+evidence-attestations/*
+!evidence-attestations/.gitkeep
+
+# Locally generated evidence-signing identity (never commit the private key)
+.local-keys/
 
 # Runtime state and generated test assets
 tests/filesystem/.state/

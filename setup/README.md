@@ -13,11 +13,10 @@ before doing anything, so re-running any of them is safe.
 | 5 | `5-uninstall-everything.sh` + `.cmd` | **Deletes things.** Menu by number (`0` = items 1-5): sandboxes/containers, gateway service, commands, `~/.nemoclaw`, nvm; and, Windows only, Docker Desktop (6) and the Ubuntu distro (7). Items 6 and 7 are never part of `0` and each needs its own typed confirmation. Add `dry` (`.cmd`) or `DRY_RUN=1` (`.sh`) to preview. |
 
 
-Every `.cmd` file is a thin Windows wrapper: it just forwards into WSL and
-runs the matching `.sh` file there. The real logic lives in the `.sh` files,
-so the same logic also runs natively on macOS and Linux. Steps 2 and 3 have
-no `.sh` counterpart because installing WSL, or installing Docker Desktop via
-`winget`, are both Windows-only operations with no Linux/macOS equivalent.
+The paired setup `.cmd` files for steps 1, 4, and 5 forward into WSL and run
+the matching `.sh` logic. Steps 2 and 3 are native Windows scripts with no
+`.sh` counterpart because installing WSL, or installing Docker Desktop via
+`winget`, has no Linux/macOS equivalent.
 
 ## Why step 4 sets `NEMOCLAW_AGENT=hermes`
 
@@ -51,6 +50,14 @@ setup\1-check-environment.cmd
 It tells you exactly which numbered file to run next for anything that is
 missing. Keep running it after each step until everything passes, then run
 `setup\4-install-nemoclaw.cmd`.
+
+After setup passes, return to the project root and run:
+
+```text
+run-enforcement-audit.cmd
+```
+
+The menu lets the user choose network tests, filesystem tests, or both. For unattended execution, pass exactly one of `--all`, `--network-only`, or `--filesystem-only` after `nopause`.
 
 ## Known issue: Docker Desktop installed, but step 3 or 4 still can't reach it
 

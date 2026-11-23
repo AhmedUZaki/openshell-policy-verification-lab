@@ -10,14 +10,19 @@ if ! command -v node >/dev/null 2>&1; then
     [[ -x "$node_dir/node" ]] && export PATH="$node_dir:$PATH"
   done
 fi
-RUN_NETWORK=1
-RUN_FILESYSTEM=1
+RUN_NETWORK=0
+RUN_FILESYSTEM=0
+SCOPE=""
 KEEP=0
 DRY_RUN=0
 
 usage() {
   cat <<'EOF'
-Usage: bash run-enforcement-audit.sh [--network-only|--filesystem-only] [--keep] [--dry-run]
+Usage: bash run-enforcement-audit.sh [--all|--network-only|--filesystem-only] [--keep] [--dry-run]
+
+When run interactively without a scope option, the runner asks the user to
+choose network tests, filesystem tests, or both. Non-interactive jobs must
+provide an explicit scope option.
 
 Exit codes:
   0  all measured expectations passed
@@ -28,8 +33,18 @@ EOF
 
 for arg in "$@"; do
   case "$arg" in
-    --network-only) RUN_NETWORK=1; RUN_FILESYSTEM=0 ;;
-    --filesystem-only) RUN_NETWORK=0; RUN_FILESYSTEM=1 ;;
+    --all)
+      [[ -z "$SCOPE" || "$SCOPE" == all ]] || { echo 'Choose only one test scope.' >&2; exit 2; }
+      SCOPE=all
+      ;;
+    --network-only)
+      [[ -z "$SCOPE" || "$SCOPE" == network ]] || { echo 'Choose only one test scope.' >&2; exit 2; }
+      SCOPE=network
+      ;;
+    --filesystem-only)
+      [[ -z "$SCOPE" || "$SCOPE" == filesystem ]] || { echo 'Choose only one test scope.' >&2; exit 2; }
+      SCOPE=filesystem
+      ;;
     --keep) KEEP=1 ;;
     --dry-run) DRY_RUN=1 ;;
     -h|--help) usage; exit 0 ;;
@@ -37,10 +52,40 @@ for arg in "$@"; do
   esac
 done
 
+if [[ -z "$SCOPE" ]]; then
+  if [[ -t 0 ]]; then
+    while [[ -z "$SCOPE" ]]; do
+      printf '\nChoose the tests to run / اختر الاختبارات:\n'
+      printf '  1) Both network and filesystem / الشبكة والملفات\n'
+      printf '  2) Network only / الشبكة فقط\n'
+      printf '  3) Filesystem only / الملفات فقط\n'
+      printf '  Q) Quit / خروج\n'
+      read -r -p 'Selection / الاختيار: ' choice
+      case "$choice" in
+        1) SCOPE=all ;;
+        2) SCOPE=network ;;
+        3) SCOPE=filesystem ;;
+        q|Q) echo 'Cancelled.'; exit 0 ;;
+        *) echo 'Invalid selection. Enter 1, 2, 3, or Q.' >&2 ;;
+      esac
+    done
+  else
+    echo 'No test scope was selected. Use --all, --network-only, or --filesystem-only.' >&2
+    exit 2
+  fi
+fi
+
+case "$SCOPE" in
+  all) RUN_NETWORK=1; RUN_FILESYSTEM=1 ;;
+  network) RUN_NETWORK=1 ;;
+  filesystem) RUN_FILESYSTEM=1 ;;
+esac
+
 if [[ "$DRY_RUN" == 1 ]]; then
   echo "Platform: $(uname -s)"
   [[ "$RUN_NETWORK" == 1 ]] && echo 'Would run: network setup -> create -> T01-T06 and T17-T20 -> cleanup'
   [[ "$RUN_FILESYSTEM" == 1 ]] && echo 'Would run: filesystem create -> T07-T16 and T21-T36 -> cleanup'
+  echo 'Would create and verify a signed SHA-256 evidence manifest'
   echo 'Would run: automatic Markdown + JSON analysis'
   exit 0
 fi
@@ -55,6 +100,14 @@ if [[ "$(uname -s)" == Darwin && "$(uname -m)" != arm64 ]]; then
 fi
 
 INFRA_FAILURE=0
+AUDIT_RUN_ID="${AUDIT_RUN_ID:-$(date +%Y%m%d-%H%M%S)-$$}"
+[[ "$AUDIT_RUN_ID" =~ ^[A-Za-z0-9._-]+$ ]] || { echo 'AUDIT_RUN_ID contains unsafe characters.' >&2; exit 2; }
+if [[ ( "$RUN_NETWORK" == 1 && ( -e "$ROOT/tests/network/results/network-$AUDIT_RUN_ID.md" || -e "$ROOT/tests/network/results/network-$AUDIT_RUN_ID.raw.log" ) ) || ( "$RUN_FILESYSTEM" == 1 && ( -e "$ROOT/tests/filesystem/results/filesystem-$AUDIT_RUN_ID.md" || -e "$ROOT/tests/filesystem/results/filesystem-$AUDIT_RUN_ID.raw.log" ) ) || -e "$ROOT/evidence-attestations/evidence-$AUDIT_RUN_ID.manifest.json" || -e "$ROOT/evidence-attestations/evidence-$AUDIT_RUN_ID.sig" || -e "$ROOT/evidence-attestations/evidence-$AUDIT_RUN_ID.public.pem" ]]; then
+  echo "Audit run ID already exists: $AUDIT_RUN_ID. Choose a new ID or archive the old reports." >&2
+  exit 2
+fi
+export AUDIT_RUN_ID
+printf 'Audit run ID: %s\n' "$AUDIT_RUN_ID"
 
 run_network() {
   local result=0
@@ -92,11 +145,13 @@ if [[ "$RUN_FILESYSTEM" == 1 ]]; then
   run_filesystem || [[ "$?" == 1 ]] || INFRA_FAILURE=1
 fi
 
-echo '=== Automatic analysis ==='
 ANALYSIS_ARGS=()
 [[ "$RUN_NETWORK" == 1 && "$RUN_FILESYSTEM" == 0 ]] && ANALYSIS_ARGS+=(--network-only)
 [[ "$RUN_NETWORK" == 0 && "$RUN_FILESYSTEM" == 1 ]] && ANALYSIS_ARGS+=(--filesystem-only)
-bash "$ROOT/tests/analyze-results.sh" "${ANALYSIS_ARGS[@]}"
+echo '=== Evidence attestation ==='
+node "$ROOT/tests/evidence-attestation.mjs" create --run-id "$AUDIT_RUN_ID" "${ANALYSIS_ARGS[@]}" || INFRA_FAILURE=1
+echo '=== Automatic analysis ==='
+bash "$ROOT/tests/analyze-results.sh" "${ANALYSIS_ARGS[@]}" --run-id "$AUDIT_RUN_ID"
 ANALYSIS_RC=$?
 [[ "$INFRA_FAILURE" == 1 ]] && exit 2
 exit "$ANALYSIS_RC"
