@@ -68,5 +68,20 @@ What this does and does not show:
   explanation above is not enough for T32.
 - The cause is **not established**. Candidates include how OpenShell 0.1.9 mediates the open, or another layer. No
   candidate has been tested, and the OpenShell source was not read for this question.
+- **It is not caused by the lab's test code.** The same behavior appears with plain statements run through
+  `openshell sandbox exec` on different fixtures, without the lab's test sequence (read-only fixtures, restrictive policy;
+  size before and after, and what the call reported):
+
+  | Call on a read-only file | 0.0.116 | 0.1.9 |
+  |---|---|---|
+  | `open(O_RDONLY)` | opens, unchanged | opens, unchanged |
+  | `open(O_RDONLY|O_TRUNC)`, two different files | **emptied, no error** | **emptied, `Permission denied`** |
+  | `open(O_WRONLY|O_TRUNC)` / `open(O_RDWR|O_TRUNC)` | denied, unchanged | denied, unchanged |
+  | `os.truncate(path, 0)` | **emptied, no error** | denied, unchanged |
+  | `open(path, "w")` / shell `: >` | denied, unchanged | denied, unchanged |
+
+  So on 0.1.9 only the `O_RDONLY|O_TRUNC` combination both reports an error and empties the file.
+- The workload processes run with seccomp filters on both versions (5 on 0.0.116, 7 on 0.1.9; `NoNewPrivs` set,
+  uid 1500). The two extra filters on 0.1.9 are an observation, not an explanation: whether they play a part was not tested.
 - It is the kind of result that justifies reporting to the OpenShell project with the evidence above (versions, the
   before and after hashes, the error), described as an observation rather than a conclusion about cause.
