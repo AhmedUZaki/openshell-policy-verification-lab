@@ -17,6 +17,12 @@ const outputDir = path.join(projectRoot, "audit-reports");
 const attestationDir = path.join(projectRoot, "evidence-attestations");
 const analyzer = path.join(testsDir, "analyze-results.mjs");
 const attestationModule = path.join(testsDir, "evidence-attestation.mjs");
+const sourceArchive = path.join(path.dirname(fileURLToPath(import.meta.url)), "archive-previous-results.mjs");
+const archiveScript = path.join(testsDir, "archive-previous-results.mjs");
+const sourceCompare = path.join(path.dirname(fileURLToPath(import.meta.url)), "compare-versions.mjs");
+const compareScript = path.join(testsDir, "compare-versions.mjs");
+const sourceNames = path.join(path.dirname(fileURLToPath(import.meta.url)), "test-names.mjs");
+const namesModule = path.join(testsDir, "test-names.mjs");
 
 const networkIds = ["T01", "T02", "T03", "T04", "T05", "T06", "T17", "T18", "T19", "T20"];
 const filesystemIds = [
@@ -41,13 +47,14 @@ function attest(runId, scope = "all") {
   return createEvidenceAttestation({ root: projectRoot, runId, scope });
 }
 
-function report(runId, ids, statuses = {}, duplicateId = null) {
+function report(runId, ids, statuses = {}, duplicateId = null, openshellVersion = null) {
   const rows = ids.map((id) => `| ${id} | \`${statuses[id] ?? "PASS"}\` | synthetic observation |`);
   if (duplicateId) rows.push(`| ${duplicateId} | \`${statuses[duplicateId] ?? "PASS"}\` | duplicate observation |`);
   return [
     "# Synthetic report",
     "",
     `- Run: \`${runId}\``,
+    ...(openshellVersion ? [`- OpenShell: \`openshell ${openshellVersion}\``] : []),
     "- Evidence complete: `yes`",
     "",
     "| Test | Status | Evidence |",
@@ -59,8 +66,8 @@ function report(runId, ids, statuses = {}, duplicateId = null) {
 
 function makeRun(runId, options = {}) {
   const embeddedRunId = options.embeddedRunId ?? runId;
-  write(path.join(networkDir, `network-${runId}.md`), report(embeddedRunId, networkIds, options.statuses, options.duplicateId));
-  write(path.join(filesystemDir, `filesystem-${runId}.md`), report(embeddedRunId, filesystemIds, options.statuses, options.duplicateId));
+  write(path.join(networkDir, `network-${runId}.md`), report(embeddedRunId, networkIds, options.statuses, options.duplicateId, options.networkVersion ?? options.openshellVersion));
+  write(path.join(filesystemDir, `filesystem-${runId}.md`), report(embeddedRunId, filesystemIds, options.statuses, options.duplicateId, options.filesystemVersion ?? options.openshellVersion));
   write(path.join(networkDir, `network-${runId}.raw.log`));
   write(path.join(filesystemDir, `filesystem-${runId}.raw.log`));
   for (const suffix of ["host-a.json", "host-b.json", "effective-policy-initial.yaml", "effective-policy-final.yaml", "openshell.log"]) {
@@ -104,6 +111,9 @@ try {
   fs.mkdirSync(testsDir, { recursive: true });
   fs.copyFileSync(sourceAnalyzer, analyzer);
   fs.copyFileSync(sourceAttestation, attestationModule);
+  fs.copyFileSync(sourceArchive, archiveScript);
+  fs.copyFileSync(sourceCompare, compareScript);
+  fs.copyFileSync(sourceNames, namesModule);
   expectExit(runAttestationCli(["init"]), 0, "signing-key initialization");
 
   check("complete evidence produces PASS", () => {
@@ -246,6 +256,63 @@ try {
     const result = run(["--run-id", "broken"]);
     expectExit(result, 2, "unreadable report");
     assert.equal(result.payload, null);
+  });
+
+  check("previous results are archived by run ID without deleting anything", () => {
+    cleanEvidence();
+    makeRun("old-run");
+    attest("old-run");
+    expectExit(run(["--run-id", "old-run"]), 0, "analysis before archiving");
+    write(path.join(networkDir, ".gitkeep"), "");
+    const moved = spawnSync(process.execPath, [archiveScript], { cwd: projectRoot, encoding: "utf8", windowsHide: true });
+    assert.equal(moved.status, 0, `archive failed: ${moved.stderr}`);
+    const archived = path.join(projectRoot, "archived-results", "old-run");
+    assert.ok(fs.existsSync(path.join(archived, "network", "network-old-run.md")));
+    assert.ok(fs.existsSync(path.join(archived, "filesystem", "filesystem-old-run.raw.log")));
+    assert.ok(fs.existsSync(path.join(archived, "evidence-attestations", "evidence-old-run.sig")));
+    assert.ok(fs.existsSync(path.join(archived, "analysis", "analysis.json")));
+    assert.ok(fs.existsSync(path.join(archived, "analysis", "LATEST.json")));
+    assert.ok(fs.existsSync(path.join(archived, "analysis", "by-version-unknown", "LATEST.json")));
+    assert.deepEqual(fs.readdirSync(networkDir), [".gitkeep"]);
+    assert.deepEqual(fs.readdirSync(filesystemDir), []);
+    assert.deepEqual(fs.readdirSync(outputDir), []);
+    assert.ok(fs.existsSync(path.join(projectRoot, ".local-keys", "evidence-private-key.pem")));
+  });
+
+  check("analysis records the OpenShell version and keeps a latest report per version", () => {
+    cleanEvidence();
+    makeRun("versioned", { openshellVersion: "0.1.9" });
+    attest("versioned");
+    const result = run(["--run-id", "versioned"]);
+    expectExit(result, 0, "versioned run");
+    assert.equal(result.payload.openshell_version, "0.1.9");
+    assert.ok(fs.existsSync(path.join(outputDir, "by-version", "0.1.9", "LATEST.json")));
+    assert.ok(fs.readFileSync(path.join(outputDir, "LATEST.md"), "utf8").includes("OpenShell version: `0.1.9`"));
+  });
+
+  check("different OpenShell versions inside one run make it incomplete", () => {
+    cleanEvidence();
+    makeRun("mixed", { networkVersion: "0.0.116", filesystemVersion: "0.1.9" });
+    attest("mixed");
+    const result = run(["--run-id", "mixed"]);
+    expectExit(result, 2, "mixed versions");
+    assert.ok(result.payload.evidence_problems.some((item) => item.includes("measured OpenShell")));
+  });
+
+  check("version comparison shows changed tests and checks the predictions", () => {
+    cleanEvidence();
+    makeRun("v-old", { openshellVersion: "0.0.116", statuses: { T09: "FAIL", T32: "FAIL" } });
+    attest("v-old");
+    expectExit(run(["--run-id", "v-old"]), 1, "older version with measured failures");
+    makeRun("v-new", { openshellVersion: "0.1.9" });
+    attest("v-new");
+    expectExit(run(["--run-id", "v-new"]), 0, "newer version");
+    const compared = spawnSync(process.execPath, [compareScript], { cwd: projectRoot, encoding: "utf8", windowsHide: true });
+    assert.equal(compared.status, 0, `comparison failed: ${compared.stderr}`);
+    const comparison = JSON.parse(fs.readFileSync(path.join(outputDir, "COMPARISON.json"), "utf8"));
+    assert.deepEqual(comparison.changed, ["T09", "T32"]);
+    assert.ok(comparison.predictions.every((item) => item.verdict === "CONFIRMED"));
+    assert.deepEqual(comparison.versions.map((item) => item.version), ["0.0.116", "0.1.9"]);
   });
 
   console.log(`\nAnalysis integrity self-test: PASS (${checks.length} checks)`);

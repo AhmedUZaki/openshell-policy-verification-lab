@@ -65,6 +65,10 @@ The runner permits the intended Apple Silicon workflow but it is not marked empi
 --filesystem-only
 --keep
 --dry-run
+--openshell-version VERSION   (repeatable)
+--openshell-versions V1,V2
+--compare
+--keep-version
 ```
 
 When no scope option is supplied in an interactive terminal, a bilingual menu is shown. Scripts and CI jobs must pass one explicit scope option.
@@ -75,6 +79,20 @@ When no scope option is supplied in an interactive terminal, a bilingual menu is
 | `--filesystem-only` | T07–T16, T21–T36 | 26 |
 | `--all` | T01–T36 | 36 |
 
+## Testing other OpenShell versions
+
+By default the runner tests whichever OpenShell is installed. On Linux and WSL it can also test other releases, one run per version:
+
+```bash
+bash run-enforcement-audit.sh --all --compare                       # baseline 0.0.116 and candidate 0.1.9
+bash run-enforcement-audit.sh --all --openshell-version 0.1.9
+bash run-enforcement-audit.sh --all --openshell-versions 0.0.116,0.1.5,0.1.9
+```
+
+Windows: `run-enforcement-audit.cmd nopause --all --compare`. Each version is downloaded and checked against its published SHA-256 list on first use (or ahead of time with `setup/4b-install-openshell-versions.sh`), gets its own run ID (`<id>-os<version>`) and its own signed evidence, and the version originally installed is restored afterwards (`--keep-version` skips that). The reports record the OpenShell version they measured; `audit-reports/COMPARISON.md` shows which tests changed between versions and checks the written predictions in `docs/UPSTREAM_ANALYSIS_T09_T32.md`.
+
+The test scripts were written against OpenShell 0.0.116. A newer release may change command-line options, policy schema, or gateway behavior; such a break is reported as `INCOMPLETE` (exit code 2), not as a pass or a failure of the enforcement claim. Switching versions keeps a separate gateway state per version and is not available on macOS.
+
 ## Automatic analysis
 
 The runner gives every invocation one audit run ID. The analyzer accepts only reports carrying that exact ID, checks every expected test in the selected scope, and writes:
@@ -83,7 +101,14 @@ The runner gives every invocation one audit run ID. The analyzer accepts only re
 audit-reports/LATEST.md
 audit-reports/LATEST_AR.md
 audit-reports/LATEST.json
+audit-reports/runs/<run-id>/   (analysis.md, analysis_AR.md, analysis.json for that run)
+audit-reports/by-version/<openshell-version>/LATEST.*   (latest report of each OpenShell version)
+audit-reports/COMPARISON.md, COMPARISON_AR.md, COMPARISON.json   (written when two or more versions were run)
 ```
+
+Each report starts with a status summary and a "Needs attention" list, then separate Network and Filesystem tables with a short description for every test.
+
+At the start of every new run, `tests/archive-previous-results.mjs` moves all earlier results (raw evidence, signed manifests, and reports) to `archived-results/<previous-run-id>/` (ignored by Git) so the active folders contain only the current run. Nothing is deleted.
 
 Raw evidence is written under `tests/network/results/` and/or `tests/filesystem/results/`. Signed manifests are written under `evidence-attestations/`.
 
@@ -127,6 +152,6 @@ Before producing an overall result, the analyzer verifies the signed evidence ma
 
 The analyzer treats T01–T10 as the core suite and T11–T36 as predefined extended robustness tests. It separates enforcement failures from `KNOWN-LIMITATION` and `EXPECTED` behavior. Correlated failures are grouped to avoid double counting, but the analyzer does not infer a specific root cause from correlation alone.
 
-The evaluation design, verdict semantics, evidence chain, bounded assurance claim, platform acceptance criteria, and threats to validity are documented in `docs/METHODOLOGY.md`, `docs/ASSURANCE_SCOPE.md`, and `docs/PLATFORM_VALIDATION.md`. The predefined test expectations are in `docs/CLAIMS.md` (T01–T10) and `docs/EXTENDED_TESTS.md` (T11–T36).
+The evaluation design, verdict semantics, evidence chain, bounded assurance claim, platform acceptance criteria, and threats to validity are documented in `docs/METHODOLOGY.md`, `docs/ASSURANCE_SCOPE.md`, `docs/PLATFORM_VALIDATION.md`, and (for the T09/T32 truncation findings) `docs/UPSTREAM_ANALYSIS_T09_T32.md`. The predefined test expectations are in `docs/CLAIMS.md` (T01–T10) and `docs/EXTENDED_TESTS.md` (T11–T36).
 
-The tracked repository contains only `.gitkeep` placeholders in generated-result directories; local runs may populate those ignored directories. Running `run-enforcement-audit.cmd` or `run-enforcement-audit.sh` generates fresh evidence belonging to the current user. Development-run evidence under `.local-reference-material/archived-results/` is historical and is never selected by the analyzer.
+The tracked repository contains only `.gitkeep` placeholders in generated-result directories; local runs may populate those ignored directories. Running `run-enforcement-audit.cmd` or `run-enforcement-audit.sh` generates fresh evidence belonging to the current user. Archived evidence under `archived-results/` is historical and is never selected by the analyzer.

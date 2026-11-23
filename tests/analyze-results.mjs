@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifyEvidenceAttestation } from "./evidence-attestation.mjs";
+import { testNames } from "./test-names.mjs";
 
 process.on("uncaughtException", (error) => {
   console.error(`Analysis infrastructure error: ${error.message}`);
@@ -141,6 +142,23 @@ const attestation = selectedRunId
   : { verified: false, fingerprint: null, files: 0, problems: ["No run ID was available for evidence attestation verification."] };
 evidenceProblems.push(...attestation.problems);
 
+// The OpenShell version is read from the evidence itself (its "- OpenShell:" header line), never from the caller.
+function reportOpenShellVersion(file) {
+  if (!file) return null;
+  try {
+    return fs.readFileSync(file, "utf8").match(/^- OpenShell:\s*`(?:openshell\s+)?v?([0-9][^`\s]*)`/m)?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+const networkVersion = scope !== "filesystem" ? reportOpenShellVersion(networkFile) : null;
+const filesystemVersion = scope !== "network" ? reportOpenShellVersion(filesystemFile) : null;
+if (networkVersion && filesystemVersion && networkVersion !== filesystemVersion) {
+  evidenceProblems.push(`The network report measured OpenShell ${networkVersion} but the filesystem report measured ${filesystemVersion}.`);
+}
+const openshellVersion = networkVersion ?? filesystemVersion ?? null;
+const versionFolder = openshellVersion && /^[0-9A-Za-z._-]+$/.test(openshellVersion) ? openshellVersion : "unknown";
+
 const expected = scope === "network"
   ? [...networkIds]
   : scope === "filesystem"
@@ -190,12 +208,63 @@ if (missing.length) interpretations.push(`Missing test results: ${missing.join("
 if (evidenceProblems.length) interpretations.push(`Evidence integrity problems: ${evidenceProblems.join(" ")}`);
 if (counts.INCONCLUSIVE) interpretations.push(`${counts.INCONCLUSIVE} test(s) were inconclusive and require rerun or environment repair.`);
 
+const nameOf = (id, ar) => testNames[id]?.[ar ? 1 : 0] ?? "";
+const cell = (text) => String(text).replaceAll("|", "\\|"); // a raw "|" would split a Markdown table cell
+const attention = expected.filter((id) => !results[id] || ["FAIL", "INCONCLUSIVE"].includes(results[id].status));
+
+function summarySection(ar) {
+  const rows = Object.entries(counts).filter(([key, value]) => key !== "OTHER" || value > 0);
+  return [
+    ar ? "## الملخص" : "## Summary",
+    "",
+    ar ? "| الحالة | العدد |" : "| Status | Count |",
+    "|---|---|",
+    ...rows.map(([key, value]) => `| ${key} | ${value} |`),
+    `| MISSING | ${missing.length} |`,
+    "",
+    ...(attention.length === expected.length && missing.length === expected.length ? [
+      ar ? "## يحتاج مراجعة" : "## Needs attention",
+      "",
+      ar
+        ? "- لم تُنتج أي نتائج لأي اختبار. راجع «مشكلات سلامة الأدلة» في قسم الاستنتاج الآلي، وسجلات التشغيل."
+        : "- No test produced a result. See the evidence integrity problems under Automatic interpretation and the run output.",
+      "",
+    ] : attention.length ? [
+      ar ? "## يحتاج مراجعة" : "## Needs attention",
+      "",
+      ...attention.map((id) => `- **${id}** ${nameOf(id, ar)}: \`${results[id]?.status ?? "MISSING"}\` — ${results[id]?.evidence ?? (ar ? "لم يُعثر على نتيجة." : "No result file was found.")}`),
+      "",
+    ] : []),
+  ];
+}
+
+function resultTables(ar) {
+  if (missing.length === expected.length) return []; // nothing measured: the per-test tables would only repeat MISSING
+  const sections = [
+    [networkIds, "Network tests", "اختبارات الشبكة"],
+    [filesystemIds, "Filesystem tests", "اختبارات الملفات"],
+  ];
+  return sections.flatMap(([ids, titleEn, titleAr]) => {
+    const shown = expected.filter((id) => ids.has(id));
+    if (!shown.length) return [];
+    return [
+      `## ${ar ? titleAr : titleEn} (${shown.length})`,
+      "",
+      ar ? "| الاختبار | الوصف | النتيجة | الدليل |" : "| Test | Description | Status | Evidence |",
+      "|---|---|---|---|",
+      ...shown.map((id) => `| ${id} | ${cell(nameOf(id, ar))} | \`${results[id]?.status ?? "MISSING"}\` | ${cell(results[id]?.evidence ?? (ar ? "لم يُعثر على نتيجة." : "No result file was found."))} |`),
+      "",
+    ];
+  });
+}
+
 const generatedAt = new Date();
 const stamp = generatedAt.toISOString().replace(/[-:.]/g, "");
 const payload = {
   schema_version: 3,
   scope,
   run_id: selectedRunId,
+  openshell_version: openshellVersion,
   generated_at: generatedAt.toISOString(),
   platform: { os: os.platform(), release: os.release(), arch: os.arch() },
   sources: {
@@ -223,6 +292,7 @@ const markdown = [
   `- Generated: \`${payload.generated_at}\``,
   `- Overall: \`${overall}\``,
   `- Scope: \`${scope}\``,
+  `- OpenShell version: \`${openshellVersion ?? "unknown"}\``,
   `- Run ID: \`${selectedRunId ?? "missing"}\``,
   `- Platform: \`${payload.platform.os} ${payload.platform.arch} ${payload.platform.release}\``,
   `- Network source: \`${payload.sources.network ?? "missing"}\``,
@@ -230,12 +300,8 @@ const markdown = [
   `- Evidence signature: \`${attestation.verified ? "VERIFIED" : "NOT VERIFIED"}\``,
   `- Signing-key fingerprint: \`${attestation.fingerprint ?? "missing"}\``,
   "",
-  "## Result matrix",
-  "",
-  "| Test | Status | Evidence |",
-  "|---|---|---|",
-  ...expected.map((id) => `| ${id} | \`${results[id]?.status ?? "MISSING"}\` | ${results[id]?.evidence ?? "No result file was found."} |`),
-  "",
+  ...summarySection(false),
+  ...resultTables(false),
   "## Automatic interpretation",
   "",
   ...interpretations.map((line) => `- ${line}`),
@@ -258,6 +324,7 @@ const markdownAr = [
   `- وقت الإنشاء: \`${payload.generated_at}\``,
   `- النتيجة العامة: \`${overall}\` — ${arabicOverall}`,
   `- النطاق: \`${scope}\``,
+  `- إصدار OpenShell: \`${openshellVersion ?? "غير معروف"}\``,
   `- معرّف التشغيل: \`${selectedRunId ?? "غير موجود"}\``,
   `- المنصة: \`${payload.platform.os} ${payload.platform.arch} ${payload.platform.release}\``,
   `- مصدر الشبكة: \`${payload.sources.network ?? "غير موجود"}\``,
@@ -265,12 +332,8 @@ const markdownAr = [
   `- توقيع الأدلة: \`${attestation.verified ? "VERIFIED" : "NOT VERIFIED"}\``,
   `- بصمة مفتاح التوقيع: \`${attestation.fingerprint ?? "غير موجودة"}\``,
   "",
-  "## مصفوفة النتائج",
-  "",
-  "| الاختبار | النتيجة | الدليل |",
-  "|---|---|---|",
-  ...expected.map((id) => `| ${id} | \`${results[id]?.status ?? "MISSING"}\` | ${results[id]?.evidence ?? "لم يُعثر على نتيجة."} |`),
-  "",
+  ...summarySection(true),
+  ...resultTables(true),
   "## الاستنتاج الآلي",
   "",
   ...(scope !== "filesystem" ? [[ ...networkIds ].every((id) => ["PASS", "EXPECTED"].includes(results[id]?.status))
@@ -291,15 +354,24 @@ const markdownAr = [
   "",
 ].join("\n");
 
-for (const [name, content] of [
-  [`analysis-${stamp}.json`, json],
-  [`analysis-${stamp}.md`, markdown],
-  [`analysis-${stamp}-ar.md`, markdownAr],
-  ["LATEST.json", json],
-  ["LATEST.md", markdown],
-  ["LATEST_AR.md", markdownAr],
-]) fs.writeFileSync(path.join(outputDir, name), content, "utf8");
+// Layout: LATEST.* keep stable paths; the same files are also kept per run under runs/<run-id>/
+// and as the latest report of each OpenShell version under by-version/<version>/.
+const runDir = path.join(outputDir, "runs", selectedRunId ?? `unknown-${stamp}`);
+const versionDir = path.join(outputDir, "by-version", versionFolder);
+fs.mkdirSync(runDir, { recursive: true });
+fs.mkdirSync(versionDir, { recursive: true });
+for (const [directory, name, content] of [
+  [runDir, "analysis.json", json],
+  [runDir, "analysis.md", markdown],
+  [runDir, "analysis_AR.md", markdownAr],
+  [outputDir, "LATEST.json", json],
+  [outputDir, "LATEST.md", markdown],
+  [outputDir, "LATEST_AR.md", markdownAr],
+  [versionDir, "LATEST.json", json],
+  [versionDir, "LATEST.md", markdown],
+  [versionDir, "LATEST_AR.md", markdownAr],
+]) fs.writeFileSync(path.join(directory, name), content, "utf8");
 
 console.log(markdown);
-console.log(`Analysis files: ${path.relative(root, outputDir)}/LATEST.md, LATEST_AR.md, and LATEST.json`);
+console.log(`Analysis files: ${path.relative(root, outputDir)}/LATEST.md, LATEST_AR.md, LATEST.json, and ${path.relative(root, runDir).replaceAll("\\", "/")}/`);
 process.exitCode = exitCode;

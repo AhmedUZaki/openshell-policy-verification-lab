@@ -3,9 +3,13 @@ setlocal
 cd /d "%~dp0"
 
 set "DRY_RUN=0"
+set "VERSIONED=0"
 set "HAS_SCOPE=0"
 set "SELECTED_SCOPE="
 for %%A in (%*) do if /i "%%~A"=="--dry-run" set "DRY_RUN=1"
+for %%A in (%*) do if /i "%%~A"=="--compare" set "VERSIONED=1"
+for %%A in (%*) do if /i "%%~A"=="--openshell-version" set "VERSIONED=1"
+for %%A in (%*) do if /i "%%~A"=="--openshell-versions" set "VERSIONED=1"
 for %%A in (%*) do if /i "%%~A"=="--all" set "HAS_SCOPE=1"
 for %%A in (%*) do if /i "%%~A"=="--network-only" set "HAS_SCOPE=1"
 for %%A in (%*) do if /i "%%~A"=="--filesystem-only" set "HAS_SCOPE=1"
@@ -52,5 +56,6 @@ if "%DRY_RUN%"=="0" if "%RESULT%"=="0" echo Completed: all measured expectations
 if "%DRY_RUN%"=="0" if "%RESULT%"=="1" echo Completed: at least one measured expectation failed. Review audit-reports\LATEST.md.
 if "%DRY_RUN%"=="0" if "%RESULT%"=="2" echo Incomplete: setup, infrastructure, or inconclusive result. Review the output above.
 
+if "%VERSIONED%"=="1" echo Per-version reports: audit-reportsy-version ^| comparison of two or more versions: audit-reportsCOMPARISON.md
 if /i not "%~1"=="nopause" pause
 exit /b %RESULT%

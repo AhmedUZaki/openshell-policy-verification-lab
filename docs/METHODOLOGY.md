@@ -36,7 +36,7 @@ Every invocation receives one run ID. Network and filesystem reports, raw logs, 
 
 The signature detects modification after attestation and identifies the signing key. Independent chain of custody additionally requires the public-key fingerprint to be recorded or published outside the evidence bundle. A valid signature still does not prove that every summary row is a correct interpretation of its raw log; causal and high-stakes conclusions require inspection of the underlying evidence.
 
-`node tests/verify-analysis-integrity.mjs` performs 13 synthetic fault-injection checks against the analyzer and attestation layer. It verifies preservation of measured failures, signature and post-signing tamper detection, missing or duplicate evidence, scoped runs, exact-run selection, safe pairing, limitation reporting, and nonzero exit codes for infrastructure faults.
+`node tests/verify-analysis-integrity.mjs` performs 17 synthetic fault-injection checks against the analyzer and attestation layer. It verifies preservation of measured failures, signature and post-signing tamper detection, missing or duplicate evidence, scoped runs, exact-run selection, safe pairing, limitation reporting, nonzero exit codes for infrastructure faults, archiving of earlier results by run ID without deleting anything, recording the OpenShell version of each run, rejecting a run whose network and filesystem reports measured different versions, and the cross-version comparison with its prediction check.
 
 ## Inference rules
 

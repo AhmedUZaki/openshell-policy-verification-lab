@@ -43,7 +43,7 @@ describe() {
     1) echo "Docker containers, images and volumes whose name contains nemoclaw or openshell (this is where the sandboxes live)" ;;
     2) echo "The OpenShell gateway service ($GATEWAY_UNIT): stopped, disabled, unit file deleted" ;;
     3) echo "The commands nemoclaw/openshell/nemohermes/... in ~/.local/bin, and the npm global package 'nemoclaw'" ;;
-    4) echo "The folder ~/.nemoclaw (the pinned NemoClaw source and installer marker)" ;;
+    4) echo "The folder ~/.nemoclaw (the pinned NemoClaw source and installer marker) and ~/.local/share/openshell-lab (downloaded OpenShell versions)" ;;
     5) echo "nvm and every Node.js it installed (~/.nvm), plus the nvm lines in ~/.bashrc, ~/.zshrc, ~/.profile. WARNING: other tools of yours may use this Node" ;;
   esac
 }
@@ -84,6 +84,8 @@ remove_item() {
       ;;
     4)
       if [[ -d "$HOME/.nemoclaw" ]]; then run rm -rf "$HOME/.nemoclaw"; else log "~/.nemoclaw not found."; fi
+      # OpenShell releases downloaded by 4b-install-openshell-versions.sh
+      if [[ -d "$HOME/.local/share/openshell-lab" ]]; then run rm -rf "$HOME/.local/share/openshell-lab"; fi
       ;;
     5)
       local rc

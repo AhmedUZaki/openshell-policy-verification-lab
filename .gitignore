@@ -27,3 +27,6 @@ Thumbs.db
 *.log
 
 graphify-out/
+
+# Results of earlier runs, moved here automatically by tests/archive-previous-results.mjs
+archived-results/

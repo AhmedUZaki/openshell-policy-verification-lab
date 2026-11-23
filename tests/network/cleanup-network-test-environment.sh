@@ -7,12 +7,14 @@ source "$ROOT/tests/shared/gateway-lifecycle.sh"
 STATE_FILE="$HERE/.state/network.env"
 export PATH="$HOME/.local/bin:$PATH"
 
+NAME="ft-network"
 if [[ -f "$STATE_FILE" ]]; then
   # shellcheck disable=SC1090
   source "$STATE_FILE"
-  if openshell sandbox list --names 2>/dev/null | grep -Fxq "$NAME"; then
-    openshell sandbox delete "$NAME"
-  fi
+fi
+# Delete by name even without a state file: an interrupted run may have created the sandbox first.
+if openshell sandbox list --names 2>/dev/null | grep -Fxq "$NAME"; then
+  openshell sandbox delete "$NAME"
 fi
 
 cleanup_gateway "$HERE/.state"
