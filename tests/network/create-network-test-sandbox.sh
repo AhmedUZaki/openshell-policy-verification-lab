@@ -8,6 +8,7 @@ ORIGIN_STATE="$STATE_DIR/origin.env"
 STATE_FILE="$STATE_DIR/network.env"
 NAME="ft-network"
 source "$ROOT/tests/shared/gateway-lifecycle.sh"
+source "$ROOT/tests/shared/gateway-network-config.sh"
 
 export PATH="$HOME/.local/bin:$PATH"
 for tool in openshell docker curl; do
@@ -28,6 +29,8 @@ curl --cacert "$STATE_DIR/caddy-root.crt" --resolve "${HOST_B}:${HOST_B_PORT}:12
   exit 2
 }
 
+# OpenShell 0.1.x: trust the local test CA and map host.openshell.internal to the test server (no-op on 0.0.x).
+lab_apply_gateway_network_config "$STATE_DIR" || exit 2
 ensure_gateway "$STATE_DIR"
 
 if openshell sandbox list --names 2>/dev/null | grep -Fxq "$NAME"; then

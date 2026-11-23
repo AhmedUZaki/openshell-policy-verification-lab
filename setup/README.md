@@ -149,3 +149,27 @@ described by upstream, `supervisor_network_mode = "bridge"` in the gateway's
 
 Until this is resolved, a 0.1.x run ends as `INCOMPLETE` (exit code 2) and the comparison
 shows its tests as not measured. It is never reported as a pass.
+
+### Network tests on OpenShell 0.1.x: what the lab does differently
+
+On OpenShell 0.1.x a sandbox has no network of its own, and names in the policy are resolved by the
+supervisor (a separate host-network container). That container cannot see the lab's Docker network
+aliases (`host-a.test`), and it does not trust the local test server's certificate authority. Measured on the
+reference machine: on 0.0.116 the sandbox joins the `openshell-docker` network and has proxy variables; on
+0.1.9 it has neither, and `curl` reported `Could not resolve host: host-a.test`.
+
+So for 0.1.x the network suite changes three things (all in `tests/shared/gateway-network-config.sh`;
+OpenShell 0.0.116 is never affected):
+
+1. The local test servers are named `host.openshell.internal` (ports 443 and 444), as the lab already does on macOS.
+2. The lab writes two temporary files, `~/.config/openshell/gateway.env` and
+   `~/.config/openshell/lab-gateway.toml`, that (a) point `host.openshell.internal` at the test server
+   (`drivers.docker.host_gateway_ip`) and (b) make the supervisor trust the test CA
+   (`supervisor.network.additional_ca_bundle`). They are read when the gateway starts, so the lab restarts the gateway.
+3. Because 0.1.x refuses a disallowed destination or executable at the sandbox boundary (connection refused,
+   permission denied, or the name does not resolve) instead of answering HTTP 403, the report accepts that as the
+   denial signal on 0.1.x only. It is labeled `boundary-refusal`, and the usual conditions still apply (working
+   baseline, healthy sandbox and origin, no request in the origin log).
+
+The files are marked as lab-managed; a `gateway.env` that the lab did not create is never overwritten, and the
+network cleanup deletes both files and restarts the gateway so the settings do not stay loaded.

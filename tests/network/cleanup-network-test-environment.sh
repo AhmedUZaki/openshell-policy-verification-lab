@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HERE="$ROOT/tests/network"
 source "$ROOT/tests/shared/gateway-lifecycle.sh"
+source "$ROOT/tests/shared/gateway-network-config.sh"
 STATE_FILE="$HERE/.state/network.env"
 export PATH="$HOME/.local/bin:$PATH"
 
@@ -17,6 +18,7 @@ if openshell sandbox list --names 2>/dev/null | grep -Fxq "$NAME"; then
   openshell sandbox delete "$NAME"
 fi
 
+lab_remove_gateway_network_config "$HERE/.state"
 cleanup_gateway "$HERE/.state"
 
 docker compose -f "$HERE/local-test-servers/compose.yaml" down -v

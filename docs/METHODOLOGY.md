@@ -38,6 +38,10 @@ The signature detects modification after attestation and identifies the signing 
 
 `node tests/verify-analysis-integrity.mjs` performs 18 synthetic fault-injection checks against the analyzer and attestation layer. It verifies preservation of measured failures, signature and post-signing tamper detection, missing or duplicate evidence, scoped runs, exact-run selection, safe pairing, limitation reporting, nonzero exit codes for infrastructure faults, archiving of earlier results by run ID without deleting anything, recording the OpenShell version of each run, rejecting a run whose network and filesystem reports measured different versions, and the cross-version comparison with its prediction check.
 
+## Version-dependent denial signals
+
+OpenShell 0.0.116 answers a disallowed request with an HTTP 403 from its proxy, or a timeout for a direct attempt. OpenShell 0.1.x refuses at the sandbox boundary instead: connection refused, permission denied, or an unresolvable name. The network runner accepts the second form as a denial signal only when it detects 0.1.x, and labels it `boundary-refusal` in the report. Every other condition of a denial verdict is unchanged: a working baseline, a healthy sandbox and origin after the request, and zero matching requests in the origin log.
+
 ## Inference rules
 
 1. Report observed behavior before proposing a mechanism.

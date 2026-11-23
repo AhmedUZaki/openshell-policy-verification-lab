@@ -91,7 +91,7 @@ bash run-enforcement-audit.sh --all --openshell-versions 0.0.116,0.1.5,0.1.9
 
 Windows: `run-enforcement-audit.cmd nopause --all --compare`. Each version is downloaded and checked against its published SHA-256 list on first use (or ahead of time with `setup/4b-install-openshell-versions.sh`), gets its own run ID (`<id>-os<version>`) and its own signed evidence, and the version originally installed is restored afterwards (`--keep-version` skips that). The reports record the OpenShell version they measured; `audit-reports/COMPARISON.md` shows which tests changed between versions and checks the written predictions in `docs/UPSTREAM_ANALYSIS_T09_T32.md`.
 
-The test scripts were written against OpenShell 0.0.116. A newer release may change command-line options, policy schema, or gateway behavior; such a break is reported as `INCOMPLETE` (exit code 2), not as a pass or a failure of the enforcement claim. Switching versions keeps a separate gateway state per version and is not available on macOS.
+On OpenShell 0.1.x the network suite needs temporary gateway settings that the lab writes to `~/.config/openshell/` and removes again (see `setup/README.md`, section "Network tests on OpenShell 0.1.x"), and Docker Desktop needs host networking enabled. The test scripts were written against OpenShell 0.0.116. A newer release may change command-line options, policy schema, or gateway behavior; such a break is reported as `INCOMPLETE` (exit code 2), not as a pass or a failure of the enforcement claim. Switching versions keeps a separate gateway state per version and is not available on macOS.
 
 ## Automatic analysis
 

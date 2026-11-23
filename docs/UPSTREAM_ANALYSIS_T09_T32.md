@@ -44,3 +44,29 @@ bash run-enforcement-audit.sh --all --compare       # runs both, writes audit-re
 ```
 
 `COMPARISON.md` contains a **Prediction check** table: T09 and T32 were written down as `FAIL` on 0.0.116 and `PASS` on 0.1.9 before 0.1.9 was measured. `CONFIRMED` supports this note; `CONTRADICTED` means this note is wrong or incomplete; an `INCOMPLETE` run of 0.1.9 means the lab scripts did not work with that release and nothing can be concluded yet.
+
+## Measured result on OpenShell 0.1.9 (2026-11-22)
+
+All 36 tests ran on both versions through `run-enforcement-audit --all --compare`.
+
+| Test | 0.0.116 | 0.1.9 | Prediction |
+|---|---|---|---|
+| T09 `truncate()` on a read-only file | FAIL | **PASS** (denied; size and hash unchanged) | **Confirmed** |
+| T32 `open(O_RDONLY|O_TRUNC)` on a read-only file | FAIL | **FAIL** | **Contradicted** |
+
+So the Landlock ABI V2 to V3 change explains T09, and only T09. For T32 on 0.1.9 the report records, for the
+restrictive sandbox, a file with SHA-256 `0cd1293b...` and 26 bytes before the call. The call returns
+`PermissionError: [Errno 13]`, and afterwards the file is 0 bytes with the SHA-256 of an empty file
+(`e3b0c442...`). A diagnostic run reproduced exactly this: the open is reported as denied **and** the content is gone.
+
+What this does and does not show:
+
+- It shows a read-only file lost its content through an open that the sandbox reported as denied, on 0.1.9.
+- A standalone Landlock test, outside OpenShell (`tests/diagnostics/landlock_truncate_probe.py`, temp directory only),
+  behaves differently on the same kernel: with the V2 rights the open truncates the file, with the V3 rights the open
+  fails **and the file stays intact**. So kernel Landlock V3 alone does not produce this combination; the ABI
+  explanation above is not enough for T32.
+- The cause is **not established**. Candidates include how OpenShell 0.1.9 mediates the open, or another layer. No
+  candidate has been tested, and the OpenShell source was not read for this question.
+- It is the kind of result that justifies reporting to the OpenShell project with the evidence above (versions, the
+  before and after hashes, the error), described as an observation rather than a conclusion about cause.

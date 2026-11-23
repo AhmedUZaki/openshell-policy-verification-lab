@@ -35,6 +35,9 @@ if [[ "$(uname -s)" != Darwin ]]; then
   docker build -q -t openshell-policy-verification/network-test-sandbox:local "$HERE/network-test-sandbox" >/dev/null
 fi
 
+# Names for the local test servers. macOS and OpenShell 0.1.x use host.openshell.internal on ports 443 and 444
+# (see tests/shared/gateway-network-config.sh); OpenShell 0.0.x on Linux uses Docker network aliases.
+source "$HERE/../shared/gateway-network-config.sh"
 if [[ "$(uname -s)" == Darwin ]]; then
   ORIGIN_IP=127.0.0.1
   HOST_A=host.openshell.internal
@@ -44,10 +47,17 @@ if [[ "$(uname -s)" == Darwin ]]; then
 else
   ORIGIN_IP="$(ip -4 route get 1.1.1.1 | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')"
   [[ -n "$ORIGIN_IP" ]] || { echo 'Could not determine the Linux host address.' >&2; exit 2; }
-  HOST_A=host-a.test
-  HOST_A_PORT=443
-  HOST_B=host-b.test
-  HOST_B_PORT=443
+  if lab_openshell_uses_policy_dns; then
+    HOST_A=host.openshell.internal
+    HOST_A_PORT=443
+    HOST_B=host.openshell.internal
+    HOST_B_PORT=444
+  else
+    HOST_A=host-a.test
+    HOST_A_PORT=443
+    HOST_B=host-b.test
+    HOST_B_PORT=443
+  fi
 fi
 
 cat >"$STATE_FILE" <<EOF

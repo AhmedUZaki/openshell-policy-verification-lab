@@ -20,6 +20,21 @@ source "$STATE_FILE"
 mkdir -p "$RESULTS_DIR"
 : >"$RAWLOG"
 
+# OpenShell 0.1.x enforces below HTTP: a destination or executable the policy does not allow is refused at
+# the sandbox boundary (connection refused, permission denied, or the name does not resolve) instead of being
+# answered with an HTTP 403. These count as a denial signal only on 0.1.x; the other conditions of every
+# denial verdict still apply (working baseline, healthy sandbox and origin, zero origin-log hits).
+# shellcheck disable=SC1091
+source "$ROOT/tests/shared/gateway-network-config.sh"
+POLICY_DNS_MODE=0
+lab_openshell_uses_policy_dns && POLICY_DNS_MODE=1
+boundary_refusal() {
+  [[ "$POLICY_DNS_MODE" -eq 1 ]] || return 1
+  [[ ( "$RUN_RC" -eq 7 && "$RUN_OUTPUT" == *"Couldn't connect to server"* ) \
+    || ( "$RUN_RC" -eq 6 && "$RUN_OUTPUT" == *'Could not resolve host'* ) \
+    || "$RUN_OUTPUT" == *'[Errno 13] Permission denied'* ]]
+}
+
 IDS=()
 STATUSES=()
 EVIDENCE=()
@@ -107,6 +122,10 @@ evaluate_denial() {
         [[ "$RUN_RC" -eq 28 && "$RUN_OUTPUT" == *'timed out'* ]] && denial_signal=1
         ;;
     esac
+    if [[ "$denial_signal" -eq 0 ]] && boundary_refusal; then
+      denial_signal=1
+      denial_kind=boundary-refusal
+    fi
     if is_success_http "$RUN_OUTPUT" || [[ "$hits" -gt 0 ]]; then
       record "$id" FAIL "The prohibited request succeeded or reached the origin (client rc=$RUN_RC, log hits=$hits)."
     elif [[ "$denial_signal" -eq 1 ]]; then
@@ -218,9 +237,14 @@ run_sbx T06_NEW "curl -sS --max-time 15 -o /tmp/t06-new.out -w 'HTTP=%{http_code
 NEW_INFRA=$RUN_INFRA
 sleep 1
 NEW_HITS="$(count_token "$LOG_A" "$TOKEN_NEW")" || NEW_HITS=INVALID
+# The fresh request must be denied: an HTTP 403 from the policy proxy, or (0.1.x only) a boundary refusal.
+T06_NEW_DENIED=0
+if boundary_refusal || [[ "$RUN_OUTPUT" == *'403 Forbidden'* || "$RUN_OUTPUT" == *'response 403'* || "$RUN_OUTPUT" == *'HTTP=403'* || "$RUN_OUTPUT" == *'"error":"policy_denied"'* ]]; then
+  T06_NEW_DENIED=1
+fi
 if [[ "$START_INFRA" -ne 0 || "$START_RC" -ne 0 || "$STREAM_STARTED" -ne 1 || "$NEW_INFRA" -ne 0 || "$NEW_HITS" == INVALID || "$UPDATE_RC" -ne 0 ]] || ! sandbox_is_healthy || ! origin_is_healthy "$HOST_A" "$HOST_A_PORT" "$LOG_A" A T06; then
   record T06 INCONCLUSIVE "The stream, policy update, sandbox, origin, or audit log had an infrastructure error."
-elif [[ "$STREAM_STARTED" -eq 1 && "$STREAM_STOPPED" -eq 1 && ( "$RUN_OUTPUT" == *'403 Forbidden'* || "$RUN_OUTPUT" == *'response 403'* || "$RUN_OUTPUT" == *'HTTP=403'* || "$RUN_OUTPUT" == *'"error":"policy_denied"'* ) ]] && ! is_success_http "$RUN_OUTPUT" && [[ "$NEW_HITS" -eq 0 ]]; then
+elif [[ "$STREAM_STARTED" -eq 1 && "$STREAM_STOPPED" -eq 1 && "$T06_NEW_DENIED" -eq 1 ]] && ! is_success_http "$RUN_OUTPUT" && [[ "$NEW_HITS" -eq 0 ]]; then
   record T06 PASS 'The old stream stopped after the policy revision, and a new request was blocked with 0 origin-log hits.'
 else
   record T06 FAIL "stream_started=$STREAM_STARTED update_rc=$UPDATE_RC stream_stopped=$STREAM_STOPPED new_rc=$RUN_RC new_log_hits=$NEW_HITS."
