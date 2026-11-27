@@ -304,11 +304,12 @@ ovl_pick_versions() {
         "$OPENSHELL_BASELINE_VERSION" "$OPENSHELL_CANDIDATE_VERSION"
       printf '  incompatibility is reported as INCOMPLETE, never as a pass.\n'
     } >&2
-    # An empty line (for example a stray Enter left over from the previous menu) just asks again; the list is not reprinted.
+    # An empty line, or one with only separators (for example a stray Enter or comma left over from the
+    # previous menu), just asks again; the list is not reprinted.
     while :; do
       IFS= read -r -p 'Numbers and/or versions (space or comma separated), Q to cancel: ' sel || return 2
       sel="${sel//$'\r'/}"   # input redirected from a Windows file ends lines with CR
-      [[ -n "${sel// /}" ]] && break
+      [[ -n "${sel//[, ]/}" ]] && break
     done
     [[ "$sel" == [qQ] ]] && { echo 'Cancelled.' >&2; return 3; }
     chosen=()
