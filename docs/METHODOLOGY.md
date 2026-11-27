@@ -2,7 +2,7 @@
 
 ## Research question and scope
 
-This lab asks whether a specific OpenShell policy, in a specific recorded environment, produces the predefined network and filesystem outcomes in T01–T36. The unit of analysis is one complete audit run identified by a shared run ID.
+This lab asks whether a specific OpenShell policy, in a specific recorded environment, produces the predefined network and filesystem outcomes in N01–N10 and F1_1–F4_4. The unit of analysis is one complete audit run identified by a shared run ID.
 
 The lab does **not** prove that OpenShell is universally secure, that no bypass exists, or that results generalize to versions and platforms that were not executed.
 
@@ -13,7 +13,7 @@ The lab does **not** prove that OpenShell is universally secure, that no bypass 
 - Destructive filesystem probes use permissive controls to show that the operation and fixture work before testing denial under the restrictive policy.
 - Network denial probes use positive controls and local HTTPS origins to distinguish policy enforcement from a dead server or broken route.
 - The user may select network-only (10 rows), filesystem-only (26 rows), or a full run (36 rows). The expected result set and evidence attestation use the same selected scope.
-- Expectations are defined before execution in `docs/CLAIMS.md` and `docs/EXTENDED_TESTS.md`.
+- Expectations are defined before execution in `docs/CLAIMS.md`.
 - All expected rows must be present. Missing, duplicate, malformed, or mismatched evidence makes the analysis `INCOMPLETE`; it is never converted into a pass.
 
 ## Test-status and analysis semantics
@@ -23,12 +23,12 @@ The lab does **not** prove that OpenShell is universally secure, that no bypass 
 | `PASS` | The measured outcome matched the predefined expectation for this run. It is not a universal security proof. |
 | `FAIL` | A valid test attempt contradicted the predefined enforcement expectation. |
 | `EXPECTED` | The observation matched intentional product semantics that differ from a simple allow/deny intuition. |
-| `KNOWN-LIMITATION` | The observation is outside the documented mediation scope used by this lab; it remains visible and is not counted as an independent enforcement failure. |
+| `LANDLOCK-LIMITATION` | The observation is outside the documented mediation scope used by this lab; it remains visible and is not counted as an independent enforcement failure. |
 | `INCONCLUSIVE` | Prerequisites or controls did not support a valid inference. |
 
 `INCOMPLETE` is an overall analysis outcome, not a status assigned to a measured test. It means required rows or signed evidence are missing, duplicated, malformed, mismatched, or inconclusive.
 
-`PASS_WITH_LIMITATIONS` is used when all measured enforcement expectations pass but one or more `KNOWN-LIMITATION` rows are present.
+`PASS_WITH_LIMITATIONS` is used when all measured enforcement expectations pass but one or more `LANDLOCK-LIMITATION` rows are present.
 
 ## Evidence and reproducibility
 
@@ -54,7 +54,7 @@ OpenShell 0.0.116 answers a disallowed request with an HTTP 403 from its proxy, 
 
 - The reference development run used the environment recorded in `docs/VERSIONS.md`; macOS and a separate native Linux host were not empirically executed during that review.
 - Local HTTPS origins improve determinism but do not reproduce every public-network condition.
-- Thirty-six predefined probes cannot demonstrate the absence of untested bypasses; the defensible assurance boundary is defined in `docs/ASSURANCE_SCOPE.md`.
+- Thirty-six predefined probes cannot demonstrate the absence of untested bypasses; the defensible assurance boundary is defined in the "Bounded assurance statement" section of `docs/CLAIMS.md`.
 - Shared implementation paths can make multiple failing tests manifestations of one finding.
 - Product semantics and mediation scope can change across versions, so every conclusion must name the tested run and environment.
 - A passing control shows that the tested operation was viable in that setup; it does not eliminate every possible confounder.
@@ -62,4 +62,4 @@ OpenShell 0.0.116 answers a disallowed request with an HTTP 403 from its proxy, 
 
 ## Interpretation discipline
 
-The machine-generated report is an evidence index, not a substitute for causal analysis. For example, if T09 and T32 both fail, the result rows establish related truncation behavior. Attributing that behavior to a particular ABI additionally requires runtime evidence showing the applied ABI and authoritative evidence describing that ABI's mediation boundary. The two tests also show why a shared guess can be wrong: T09 was traced to the Landlock ABI (and passes once the ABI changes), while T32 kept failing after the ABI changed and has a different cause (`docs/UPSTREAM_ANALYSIS_T09_T32.md`).
+The machine-generated report is an evidence index, not a substitute for causal analysis. For example, if F3_1 and F3_3 both fail, the result rows establish related truncation behavior. Attributing that behavior to a particular ABI additionally requires runtime evidence showing the applied ABI and authoritative evidence describing that ABI's mediation boundary. The two tests also show why a shared guess can be wrong: F3_1 was traced to the Landlock ABI (and passes once the ABI changes), while F3_3 kept failing after the ABI changed and has a different cause (`docs/upstream-analysis/truncation-F3_1-F3_3.md`).

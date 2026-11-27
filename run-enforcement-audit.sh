@@ -216,8 +216,8 @@ if [[ "$DRY_RUN" == 1 ]]; then
     [[ ${#VERSIONS[@]} -ge 2 ]] && echo 'Would write audit-reports/COMPARISON.md, COMPARISON_AR.md and COMPARISON.json'
   fi
   echo 'Would move previous results to archived-results/<previous-run-id>/'
-  [[ "$RUN_NETWORK" == 1 ]] && echo 'Would run: network setup -> create -> T01-T06 and T17-T20 -> cleanup'
-  [[ "$RUN_FILESYSTEM" == 1 ]] && echo 'Would run: filesystem create -> T07-T16 and T21-T36 -> cleanup'
+  [[ "$RUN_NETWORK" == 1 ]] && echo 'Would run: network setup -> create -> N01-N06 and N07-N10 -> cleanup'
+  [[ "$RUN_FILESYSTEM" == 1 ]] && echo 'Would run: filesystem create -> F1_1-F2_5 and F2_6-F1_2 -> cleanup'
   echo 'Would create and verify a signed SHA-256 evidence manifest'
   echo 'Would run: automatic Markdown + JSON analysis'
   exit 0
@@ -285,11 +285,11 @@ run_audit() {
   printf 'OpenShell version under test: %s\n' "$(ovl_current)"
 
   if [[ "$RUN_NETWORK" == 1 ]]; then
-    echo '=== Network tests T01-T06 and T17-T20 ==='
+    echo '=== Network tests N01-N06 and N07-N10 ==='
     run_network || [[ "$?" == 1 ]] || infra_failure=1
   fi
   if [[ "$RUN_FILESYSTEM" == 1 ]]; then
-    echo '=== Filesystem tests T07-T16 and T21-T36 ==='
+    echo '=== Filesystem tests F1_1-F2_5 and F2_6-F1_2 ==='
     run_filesystem || [[ "$?" == 1 ]] || infra_failure=1
   fi
 

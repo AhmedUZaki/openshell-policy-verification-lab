@@ -10,7 +10,7 @@
 # The first sandbox creation may pull a container image, which can take minutes.
 #
 # Retained historical helper for Linux and Windows inside WSL (see
-# run-legacy-openshell-probes.cmd). It is not part of the portable T01-T36
+# run-legacy-openshell-probes.cmd). It is not part of the portable N01-F1_2
 # runner. Exit code: 0 = no FAIL/ERROR, 1 = at least one.
 #
 # Usage:
@@ -20,7 +20,7 @@
 set -uo pipefail
 
 if [[ "$(uname -s)" != Linux ]]; then
-  echo 'This legacy helper supports Linux/WSL only. Use run-enforcement-audit.sh for the portable T01-T36 suite.' >&2
+  echo 'This legacy helper supports Linux/WSL only. Use run-enforcement-audit.sh for the portable N01-F1_2 suite.' >&2
   exit 2
 fi
 

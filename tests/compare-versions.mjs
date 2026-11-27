@@ -21,16 +21,16 @@ for (let index = 0; index < argv.length; index += 1) {
 }
 
 // Written down BEFORE OpenShell 0.1.9 was measured, from reading the upstream source
-// (docs/UPSTREAM_ANALYSIS_T09_T32.md). They are hypotheses to check, not results.
+// (docs/upstream-analysis/truncation-F3_1-F3_3.md). They are hypotheses to check, not results.
 const predictions = [
-  { test: "T09", version: "0.0.116", expected: "FAIL" },
-  { test: "T09", version: "0.1.9", expected: "PASS" },
-  { test: "T32", version: "0.0.116", expected: "FAIL" },
-  { test: "T32", version: "0.1.9", expected: "PASS" },
+  { test: "F3_1", version: "0.0.116", expected: "FAIL" },
+  { test: "F3_1", version: "0.1.9", expected: "PASS" },
+  { test: "F3_3", version: "0.0.116", expected: "FAIL" },
+  { test: "F3_3", version: "0.1.9", expected: "PASS" },
 ];
 
 const cell = (text) => String(text).replaceAll("|", "\\|");
-const statusOrder = ["PASS", "FAIL", "EXPECTED", "KNOWN-LIMITATION", "INCONCLUSIVE"];
+const statusOrder = ["PASS", "FAIL", "EXPECTED", "LANDLOCK-LIMITATION", "INCONCLUSIVE"];
 
 function analysisFiles() {
   const files = [];
@@ -124,7 +124,7 @@ function render(ar) {
     "",
     ...(changed.length ? [head, separator, ...changed.map(row)] : [t("No test changed status between the compared versions.", "لم تتغير نتيجة أي اختبار بين الإصدارات المقارَنة.")]),
     "",
-    `## ${t("Prediction check", "فحص التوقعات")} (docs/UPSTREAM_ANALYSIS_T09_T32.md)`,
+    `## ${t("Prediction check", "فحص التوقعات")} (docs/upstream-analysis/truncation-F3_1-F3_3.md)`,
     "",
     t("These expectations were written from reading the upstream source before the newer version was measured. A contradicted prediction means that analysis is wrong or incomplete.",
       "كُتبت هذه التوقعات من قراءة المصدر قبل قياس الإصدار الأحدث. التوقع المخالف يعني أن ذلك التحليل خاطئ أو ناقص."),

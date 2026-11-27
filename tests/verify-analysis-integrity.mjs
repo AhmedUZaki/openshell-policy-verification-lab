@@ -24,11 +24,13 @@ const compareScript = path.join(testsDir, "compare-versions.mjs");
 const sourceNames = path.join(path.dirname(fileURLToPath(import.meta.url)), "test-names.mjs");
 const namesModule = path.join(testsDir, "test-names.mjs");
 
-const networkIds = ["T01", "T02", "T03", "T04", "T05", "T06", "T17", "T18", "T19", "T20"];
+const networkIds = ["N01", "N02", "N03", "N04", "N05", "N06", "N07", "N08", "N09", "N10"];
 const filesystemIds = [
-  "T07", "T08", "T09", "T10", "T11", "T12", "T13", "T14", "T15", "T16",
-  "T21", "T22", "T23", "T24", "T25", "T26", "T27", "T28", "T29", "T30",
-  "T31", "T32", "T33", "T34", "T35", "T36",
+  "F1_1", "F1_2",
+  "F2_1", "F2_2", "F2_3", "F2_4", "F2_5", "F2_6", "F2_7", "F2_8", "F2_9", "F2_10",
+  "F2_11", "F2_12", "F2_13", "F2_14", "F2_15", "F2_16", "F2_17",
+  "F3_1", "F3_2", "F3_3",
+  "F4_1", "F4_2", "F4_3", "F4_4",
 ];
 
 function write(file, content = "synthetic evidence\n") {
@@ -128,22 +130,22 @@ try {
 
   check("measured FAIL is preserved", () => {
     cleanEvidence();
-    makeRun("measured-fail", { statuses: { T18: "FAIL" } });
+    makeRun("measured-fail", { statuses: { N08: "FAIL" } });
     attest("measured-fail");
     const result = run(["--run-id", "measured-fail"]);
     expectExit(result, 1, "measured failure");
     assert.equal(result.payload.overall, "MEASURED_FAILURE");
-    assert.equal(result.payload.results.T18.status, "FAIL");
+    assert.equal(result.payload.results.N08.status, "FAIL");
   });
 
   check("known limitation remains visible", () => {
     cleanEvidence();
-    makeRun("limitation", { statuses: { T16: "KNOWN-LIMITATION" } });
+    makeRun("limitation", { statuses: { F2_5: "LANDLOCK-LIMITATION" } });
     attest("limitation");
     const result = run(["--run-id", "limitation"]);
     expectExit(result, 0, "known limitation");
     assert.equal(result.payload.overall, "PASS_WITH_LIMITATIONS");
-    assert.equal(result.payload.counts["KNOWN-LIMITATION"], 1);
+    assert.equal(result.payload.counts["LANDLOCK-LIMITATION"], 1);
   });
 
   check("missing raw evidence is rejected", () => {
@@ -159,11 +161,11 @@ try {
 
   check("duplicate result row is rejected", () => {
     cleanEvidence();
-    makeRun("duplicate", { duplicateId: "T01" });
+    makeRun("duplicate", { duplicateId: "N01" });
     attest("duplicate");
     const result = run(["--run-id", "duplicate"]);
     expectExit(result, 2, "duplicate row");
-    assert.ok(result.payload.evidence_problems.some((item) => item.includes("duplicate result row T01")));
+    assert.ok(result.payload.evidence_problems.some((item) => item.includes("duplicate result row N01")));
   });
 
   check("embedded run-ID mismatch is rejected", () => {
@@ -320,7 +322,7 @@ try {
 
   check("version comparison shows changed tests and checks the predictions", () => {
     cleanEvidence();
-    makeRun("v-old", { openshellVersion: "0.0.116", statuses: { T09: "FAIL", T32: "FAIL" } });
+    makeRun("v-old", { openshellVersion: "0.0.116", statuses: { F3_1: "FAIL", F3_3: "FAIL" } });
     attest("v-old");
     expectExit(run(["--run-id", "v-old"]), 1, "older version with measured failures");
     makeRun("v-new", { openshellVersion: "0.1.9" });
@@ -329,7 +331,7 @@ try {
     const compared = spawnSync(process.execPath, [compareScript], { cwd: projectRoot, encoding: "utf8", windowsHide: true });
     assert.equal(compared.status, 0, `comparison failed: ${compared.stderr}`);
     const comparison = JSON.parse(fs.readFileSync(path.join(outputDir, "COMPARISON.json"), "utf8"));
-    assert.deepEqual(comparison.changed, ["T09", "T32"]);
+    assert.deepEqual(comparison.changed, ["F3_1", "F3_3"]);
     assert.ok(comparison.predictions.every((item) => item.verdict === "CONFIRMED"));
     assert.deepEqual(comparison.versions.map((item) => item.version), ["0.0.116", "0.1.9"]);
   });

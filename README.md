@@ -2,10 +2,10 @@
 
 This project runs thirty-six local enforcement tests and automatically analyzes their evidence:
 
-- T01–T06: network destination, proxy bypass, binary identity, HTTP method/path, and policy-generation revocation.
-- T07–T10: inaccessible and read-only filesystem behavior.
-- T11–T16 and T21–T36: extended content, namespace, symlink, special-file, execution, and metadata filesystem probes.
-- T17–T20: copied-binary identity, additional REST boundaries, path normalization, and a positive precision control.
+- N01–N06: network destination, proxy bypass, binary identity, HTTP method/path, and policy-generation revocation.
+- F1_1–F4_1: inaccessible and read-only filesystem behavior.
+- F3_2–F2_5 and F2_6–F1_2: extended content, namespace, symlink, special-file, execution, and metadata filesystem probes.
+- N07–N10: copied-binary identity, additional REST boundaries, path normalization, and a positive precision control.
 
 No public test server, domain, Cloudflare account, model provider, or API credential is required.
 
@@ -19,7 +19,7 @@ No public test server, domain, Cloudflare account, model provider, or API creden
 | Other systemd Linux distributions | Best effort | Docker plus a compatible pinned NemoClaw/OpenShell installation |
 | Intel macOS or native Windows without WSL 2 | Not supported by this runner | Use a supported host above |
 
-This is not a claim that every machine with one of these operating systems will work. Port 443 must be free on Windows/WSL and Linux; ports 443 and 444 must be free on macOS. Docker must be reachable by the current user, and the machine must meet the pinned NemoClaw requirements. The main runner is portable; `tests/network/run-legacy-openshell-probes.sh` is a retained Linux/WSL-only historical helper and is not part of T01–T36.
+This is not a claim that every machine with one of these operating systems will work. Port 443 must be free on Windows/WSL and Linux; ports 443 and 444 must be free on macOS. Docker must be reachable by the current user, and the machine must meet the pinned NemoClaw requirements. The main runner is portable; `tests/network/run-legacy-openshell-probes.sh` is a retained Linux/WSL-only historical helper and is not part of N01–F1_2.
 
 ## One-command execution
 
@@ -31,7 +31,7 @@ Requirements: Docker Desktop, WSL 2, and the `Ubuntu-24.04` distribution configu
 run-enforcement-audit.cmd
 ```
 
-The interactive menu asks whether to run network tests, filesystem tests, or both. Choosing network runs T01–T06 and T17–T20; choosing filesystem runs T07–T16 and T21–T36.
+The interactive menu asks whether to run network tests, filesystem tests, or both. Choosing network runs N01–N06 and N07–N10; choosing filesystem runs F1_1–F2_5 and F2_6–F1_2.
 
 For a terminal or CI job without the final pause:
 
@@ -75,9 +75,9 @@ When no scope option is supplied in an interactive terminal, the runner shows bi
 
 | Scope | Tests | Result rows |
 |---|---|---|
-| `--network-only` | T01–T06, T17–T20 | 10 |
-| `--filesystem-only` | T07–T16, T21–T36 | 26 |
-| `--all` | T01–T36 | 36 |
+| `--network-only` | N01–N06, N07–N10 | 10 |
+| `--filesystem-only` | F1_1–F2_5, F2_6–F1_2 | 26 |
+| `--all` | N01–F1_2 | 36 |
 
 ## Testing other OpenShell versions
 
@@ -103,9 +103,9 @@ bash setup/4b-install-openshell-versions.sh prepare choose          # pick, down
 2. *Choose the tests.* Both, network only, or filesystem only.
 3. The tests run on each chosen version, and two or more versions are compared.
 
-Windows without the menu: `run-enforcement-audit.cmd nopause --all --compare`. Each version is downloaded and checked against its published SHA-256 list on first use (or ahead of time with `setup/4b-install-openshell-versions.sh`), gets its own run ID (`<id>-os<version>`) and its own signed evidence, and the version originally installed is restored afterwards (`--keep-version` skips that). The reports record the OpenShell version they measured; `audit-reports/COMPARISON.md` shows which tests changed between versions and checks the written predictions in `docs/UPSTREAM_ANALYSIS_T09_T32.md`.
+Windows without the menu: `run-enforcement-audit.cmd nopause --all --compare`. Each version is downloaded and checked against its published SHA-256 list on first use (or ahead of time with `setup/4b-install-openshell-versions.sh`), gets its own run ID (`<id>-os<version>`) and its own signed evidence, and the version originally installed is restored afterwards (`--keep-version` skips that). The reports record the OpenShell version they measured; `audit-reports/COMPARISON.md` shows which tests changed between versions and checks the written predictions in `docs/upstream-analysis/truncation-F3_1-F3_3.md`.
 
-On OpenShell 0.1.x the network suite needs temporary gateway settings that the lab writes to `~/.config/openshell/` and removes again (see `setup/README.md`, section "Network tests on OpenShell 0.1.x"), and Docker Desktop needs host networking enabled. The test scripts were written against OpenShell 0.0.116. A newer release may change command-line options, policy schema, or gateway behavior; such a break is reported as `INCOMPLETE` (exit code 2), not as a pass or a failure of the enforcement claim. Switching versions keeps a separate gateway state per version and is not available on macOS. OpenShell 0.1.10 is the latest stable release as of 2026-11-26. The lab's filesystem suite (26 tests) was run on it that day: 20 PASS, 1 FAIL (T32), 1 EXPECTED, 4 KNOWN-LIMITATION, 0 INCONCLUSIVE; the network suite was not run on it (see `docs/VERSIONS.md`).
+On OpenShell 0.1.x the network suite needs temporary gateway settings that the lab writes to `~/.config/openshell/` and removes again (see `setup/README.md`, section "Network tests on OpenShell 0.1.x"), and Docker Desktop needs host networking enabled. The test scripts were written against OpenShell 0.0.116. A newer release may change command-line options, policy schema, or gateway behavior; such a break is reported as `INCOMPLETE` (exit code 2), not as a pass or a failure of the enforcement claim. Switching versions keeps a separate gateway state per version and is not available on macOS. OpenShell 0.1.10 is the latest stable release as of 2026-11-26. The lab's filesystem suite (26 tests) was run on it that day: 20 PASS, 1 FAIL (F3_3), 1 EXPECTED, 4 LANDLOCK-LIMITATION, 0 INCONCLUSIVE; the network suite was not run on it (see `docs/VERSIONS.md`).
 
 ## Automatic analysis
 
@@ -160,13 +160,13 @@ Exit codes are stable for local automation and CI:
 - `1`: at least one measured expectation returned `FAIL`.
 - `2`: infrastructure failure, missing result, or inconclusive result.
 
-The overall label is `PASS_WITH_LIMITATIONS` rather than plain `PASS` whenever a measured `KNOWN-LIMITATION` is present. Infrastructure failures and unreadable evidence are never inferred to be successful enforcement.
+The overall label is `PASS_WITH_LIMITATIONS` rather than plain `PASS` whenever a measured `LANDLOCK-LIMITATION` is present. Infrastructure failures and unreadable evidence are never inferred to be successful enforcement.
 
 Before producing an overall result, the analyzer verifies the signed evidence manifest and every recorded SHA-256 digest. It also verifies the run ID embedded in each report, rejects duplicate test rows, checks the evidence-complete marker, and requires the corresponding raw logs, origin logs, and policy snapshots. Missing, modified, unsigned, or malformed evidence makes the run `INCOMPLETE` with exit code `2`.
 
-The analyzer treats T01–T10 as the core suite and T11–T36 as predefined extended robustness tests. It separates enforcement failures from `KNOWN-LIMITATION` and `EXPECTED` behavior. Correlated failures are grouped to avoid double counting, but the analyzer does not infer a specific root cause from correlation alone.
+The analyzer treats N01–N06 and F1_1/F2_1/F3_1/F4_1 as the core suite and the remaining N07–N10 and F1_2/F2_2–F2_17/F3_2–F3_3/F4_2–F4_4 as predefined extended robustness tests. It separates enforcement failures from `LANDLOCK-LIMITATION` and `EXPECTED` behavior. Correlated failures are grouped to avoid double counting, but the analyzer does not infer a specific root cause from correlation alone.
 
-The evaluation design, verdict semantics, evidence chain, bounded assurance claim, platform acceptance criteria, and threats to validity are documented in `docs/METHODOLOGY.md`, `docs/ASSURANCE_SCOPE.md`, `docs/PLATFORM_VALIDATION.md`, and (for the T09/T32 truncation findings) `docs/UPSTREAM_ANALYSIS_T09_T32.md`. The predefined test expectations are in `docs/CLAIMS.md` (T01–T10) and `docs/EXTENDED_TESTS.md` (T11–T36).
+The evaluation design, verdict semantics, evidence chain, bounded assurance claim, platform acceptance criteria, and threats to validity are documented in `docs/METHODOLOGY.md` and (for the F3_1/F3_3 truncation findings) `docs/upstream-analysis/truncation-F3_1-F3_3.md`. The predefined test expectations, including the bounded assurance statement and claim-to-test coverage, are all in `docs/CLAIMS.md`. Platform acceptance criteria and version history are in `docs/VERSIONS.md`.
 
 The tracked repository contains only `.gitkeep` placeholders in generated-result directories; local runs may populate those ignored directories. Running `run-enforcement-audit.cmd` or `run-enforcement-audit.sh` generates fresh evidence belonging to the current user. Archived evidence under `archived-results/` is historical and is never selected by the analyzer.
 

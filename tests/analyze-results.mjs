@@ -74,7 +74,7 @@ function parseRows(file, wanted, expectedRunId, evidenceProblems) {
     evidenceProblems.push(`${path.relative(root, file)} does not certify complete evidence collection.`);
   }
   for (const line of text.split(/\r?\n/)) {
-    const match = line.match(/^\|\s*(T\d{2})\s*\|\s*`?([A-Z-]+)`?\s*\|\s*(.*?)\s*\|$/);
+    const match = line.match(/^\|\s*(N\d{2}|F[1-4]_\d{1,2})\s*\|\s*`?([A-Z-]+)`?\s*\|\s*(.*?)\s*\|$/);
     if (match && wanted.has(match[1])) {
       if (rows[match[1]]) {
         evidenceProblems.push(`${path.relative(root, file)} contains duplicate result row ${match[1]}.`);
@@ -116,11 +116,13 @@ const filesystemName = selectedRunId ? filesystemRuns.get(selectedRunId)?.name ?
 const networkFile = networkName ? path.join(networkDir, networkName) : null;
 const filesystemFile = filesystemName ? path.join(filesystemDir, filesystemName) : null;
 
-const networkIds = new Set(["T01", "T02", "T03", "T04", "T05", "T06", "T17", "T18", "T19", "T20"]);
+const networkIds = new Set(["N01", "N02", "N03", "N04", "N05", "N06", "N07", "N08", "N09", "N10"]);
 const filesystemIds = new Set([
-  "T07", "T08", "T09", "T10", "T11", "T12", "T13", "T14", "T15", "T16",
-  "T21", "T22", "T23", "T24", "T25", "T26", "T27", "T28", "T29", "T30",
-  "T31", "T32", "T33", "T34", "T35", "T36",
+  "F1_1", "F1_2",
+  "F2_1", "F2_2", "F2_3", "F2_4", "F2_5", "F2_6", "F2_7", "F2_8", "F2_9", "F2_10",
+  "F2_11", "F2_12", "F2_13", "F2_14", "F2_15", "F2_16", "F2_17",
+  "F3_1", "F3_2", "F3_3",
+  "F4_1", "F4_2", "F4_3", "F4_4",
 ]);
 const evidenceProblems = [];
 const results = {
@@ -171,12 +173,12 @@ const expected = scope === "network"
   ? [...networkIds]
   : scope === "filesystem"
     ? [...filesystemIds]
-    : Array.from({ length: 36 }, (_, index) => `T${String(index + 1).padStart(2, "0")}`);
+    : [...networkIds, ...filesystemIds];
 for (const id of Object.keys(results)) {
   if (!expected.includes(id)) delete results[id];
 }
 const missing = expected.filter((id) => !results[id]);
-const counts = { PASS: 0, FAIL: 0, EXPECTED: 0, "KNOWN-LIMITATION": 0, INCONCLUSIVE: 0, OTHER: 0 };
+const counts = { PASS: 0, FAIL: 0, EXPECTED: 0, "LANDLOCK-LIMITATION": 0, INCONCLUSIVE: 0, OTHER: 0 };
 for (const item of Object.values(results)) {
   if (Object.hasOwn(counts, item.status)) counts[item.status] += 1;
   else counts.OTHER += 1;
@@ -190,7 +192,7 @@ if (missing.length || evidenceProblems.length || counts.INCONCLUSIVE || counts.O
 } else if (counts.FAIL) {
   overall = "MEASURED_FAILURE";
   exitCode = 1;
-} else if (counts["KNOWN-LIMITATION"]) {
+} else if (counts["LANDLOCK-LIMITATION"]) {
   overall = "PASS_WITH_LIMITATIONS";
 }
 
@@ -198,19 +200,19 @@ const interpretations = [];
 if ([...networkIds].every((id) => ["PASS", "EXPECTED"].includes(results[id]?.status))) {
   interpretations.push("All core and extended network tests matched the configured enforcement expectations.");
 }
-if ([...filesystemIds].every((id) => ["PASS", "EXPECTED", "KNOWN-LIMITATION"].includes(results[id]?.status))) {
-  interpretations.push("All filesystem enforcement expectations passed; KNOWN-LIMITATION rows separately record documented Landlock scope limits.");
-} else if (results.T09?.status === "FAIL") {
-  interpretations.push("T09 measured a content-integrity failure: pathname truncation changed a fixture that the applied policy marked read-only. The test result alone does not identify the underlying mechanism.");
+if ([...filesystemIds].every((id) => ["PASS", "EXPECTED", "LANDLOCK-LIMITATION"].includes(results[id]?.status))) {
+  interpretations.push("All filesystem enforcement expectations passed; LANDLOCK-LIMITATION rows separately record documented Landlock scope limits.");
+} else if (results.F3_1?.status === "FAIL") {
+  interpretations.push("F3_1 measured a content-integrity failure: pathname truncation changed a fixture that the applied policy marked read-only. The test result alone does not identify the underlying mechanism.");
 }
 const extendedFailures = expected.filter((id) => Number(id.slice(1)) > 10 && results[id]?.status === "FAIL");
-const unreviewedExtendedFailures = extendedFailures.filter((id) => !(id === "T32" && results.T09?.status === "FAIL"));
-const knownLimitations = expected.filter((id) => results[id]?.status === "KNOWN-LIMITATION");
-if (results.T16?.status === "KNOWN-LIMITATION") interpretations.push("T16 records a known Landlock limitation: chmod metadata changes are outside Landlock mediation.");
-if (results.T18?.status === "EXPECTED") interpretations.push("T18 matched the suite's predefined GET-to-HEAD method expectation.");
-if (results.T35?.status === "EXPECTED") interpretations.push("T35 observed that execution from the read-only path remained allowed; content-mutation restrictions are measured by separate tests.");
+const unreviewedExtendedFailures = extendedFailures.filter((id) => !(id === "F3_3" && results.F3_1?.status === "FAIL"));
+const knownLimitations = expected.filter((id) => results[id]?.status === "LANDLOCK-LIMITATION");
+if (results.F2_5?.status === "LANDLOCK-LIMITATION") interpretations.push("F2_5 records a known Landlock limitation: chmod metadata changes are outside Landlock mediation.");
+if (results.N08?.status === "EXPECTED") interpretations.push("N08 matched the suite's predefined GET-to-HEAD method expectation.");
+if (results.F2_17?.status === "EXPECTED") interpretations.push("F2_17 observed that execution from the read-only path remained allowed; content-mutation restrictions are measured by separate tests.");
 if (unreviewedExtendedFailures.length) interpretations.push(`Extended robustness failures requiring semantic review: ${unreviewedExtendedFailures.join(", ")}.`);
-if (results.T09?.status === "FAIL" && results.T32?.status === "FAIL") interpretations.push("T09 and T32 are correlated observations of truncation behavior and should be grouped as one provisional finding. Attributing a specific root cause requires separate runtime evidence.");
+if (results.F3_1?.status === "FAIL" && results.F3_3?.status === "FAIL") interpretations.push("F3_1 and F3_3 are correlated observations of truncation behavior and should be grouped as one provisional finding. Attributing a specific root cause requires separate runtime evidence.");
 if (knownLimitations.length) interpretations.push(`Documented Landlock scope limitations observed: ${knownLimitations.join(", ")}. These do not count as independent enforcement failures.`);
 if (missing.length) interpretations.push(`Missing test results: ${missing.join(", ")}.`);
 if (evidenceProblems.length) interpretations.push(`Evidence integrity problems: ${evidenceProblems.join(" ")}`);
@@ -348,14 +350,14 @@ const markdownAr = [
   ...(scope !== "filesystem" ? [[ ...networkIds ].every((id) => ["PASS", "EXPECTED"].includes(results[id]?.status))
     ? "- وافقت جميع اختبارات الشبكة الأساسية والموسعة توقعات الإنفاذ المحددة."
     : "- توجد نتيجة شبكة غير ناجحة أو ناقصة وتحتاج مراجعة."] : []),
-  ...(scope !== "network" ? [results.T09?.status === "FAIL"
-    ? "- قاس T09 فشلًا في سلامة المحتوى: غيّرت truncate ملفًا صنفته السياسة المطبقة كـ read_only. لا تكفي نتيجة الاختبار وحدها لتحديد الآلية المسببة."
-    : "- لم يسجل T09 فشلًا في أحدث جولة."] : []),
+  ...(scope !== "network" ? [results.F3_1?.status === "FAIL"
+    ? "- قاس F3_1 فشلًا في سلامة المحتوى: غيّرت truncate ملفًا صنفته السياسة المطبقة كـ read_only. لا تكفي نتيجة الاختبار وحدها لتحديد الآلية المسببة."
+    : "- لم يسجل F3_1 فشلًا في أحدث جولة."] : []),
   ...(unreviewedExtendedFailures.length ? [`- إخفاقات robustness التي ما زالت تحتاج مراجعة دلالية: ${unreviewedExtendedFailures.join(", ")}.`] : []),
   ...(knownLimitations.length ? [`- قيود Landlock الموثقة التي ظهرت: ${knownLimitations.join(", ")}. لا تُحسب هذه كإخفاقات إنفاذ مستقلة.`] : []),
-  ...(results.T18?.status === "EXPECTED" ? ["- طابق T18 التوقع المحدد مسبقًا في المختبر لمعاملة HEAD مع قاعدة GET."] : []),
-  ...(results.T35?.status === "EXPECTED" ? ["- لاحظ T35 أن التنفيذ من مسار read_only ظل مسموحًا؛ وتقيس اختبارات منفصلة قيود تعديل المحتوى."] : []),
-  ...(results.T09?.status === "FAIL" && results.T32?.status === "FAIL" ? ["- T09 وT32 ملاحظتان مترابطتان لسلوك truncate وتُجمعان كنتيجة أولية واحدة. يحتاج تحديد سبب جذري بعينه إلى دليل تشغيل منفصل."] : []),
+  ...(results.N08?.status === "EXPECTED" ? ["- طابق N08 التوقع المحدد مسبقًا في المختبر لمعاملة HEAD مع قاعدة GET."] : []),
+  ...(results.F2_17?.status === "EXPECTED" ? ["- لاحظ F2_17 أن التنفيذ من مسار read_only ظل مسموحًا؛ وتقيس اختبارات منفصلة قيود تعديل المحتوى."] : []),
+  ...(results.F3_1?.status === "FAIL" && results.F3_3?.status === "FAIL" ? ["- F3_1 وF3_3 ملاحظتان مترابطتان لسلوك truncate وتُجمعان كنتيجة أولية واحدة. يحتاج تحديد سبب جذري بعينه إلى دليل تشغيل منفصل."] : []),
   ...(missing.length ? [`- النتائج المفقودة: ${missing.join(", ")}.`] : []),
   ...(evidenceProblems.length ? [`- مشكلات سلامة الأدلة: ${evidenceProblems.join(" ")}`] : []),
   "",
