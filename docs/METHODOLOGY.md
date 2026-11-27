@@ -62,4 +62,4 @@ OpenShell 0.0.116 answers a disallowed request with an HTTP 403 from its proxy, 
 
 ## Interpretation discipline
 
-The machine-generated report is an evidence index, not a substitute for causal analysis. For example, if T09 and T32 both fail, the result rows establish related truncation behavior. Attributing that behavior to a particular ABI additionally requires runtime evidence showing the applied ABI and authoritative evidence describing that ABI's mediation boundary.
+The machine-generated report is an evidence index, not a substitute for causal analysis. For example, if T09 and T32 both fail, the result rows establish related truncation behavior. Attributing that behavior to a particular ABI additionally requires runtime evidence showing the applied ABI and authoritative evidence describing that ABI's mediation boundary. The two tests also show why a shared guess can be wrong: T09 was traced to the Landlock ABI (and passes once the ABI changes), while T32 kept failing after the ABI changed and has a different cause (`docs/UPSTREAM_ANALYSIS_T09_T32.md`).

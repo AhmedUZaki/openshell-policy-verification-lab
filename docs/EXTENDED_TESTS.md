@@ -27,7 +27,7 @@ The network scope contains T01–T06 and T17–T20. The filesystem scope contain
 | T29 | Filesystem | Follow a symlink in `read_only` to an ungranted target | Target content remains inaccessible. |
 | T30 | Filesystem | Write through a symlink in `/work` whose target is `read_only` | Denied; target hash unchanged. |
 | T31 | Filesystem | Modify content through a writable `mmap` | Denied; target hash unchanged. |
-| T32 | Filesystem | Open with unusual `O_RDONLY | O_TRUNC` flags | Denied; size/hash unchanged. Analyze a failure jointly with T09; these observations alone do not identify the kernel mechanism. |
+| T32 | Filesystem | Open with unusual `O_RDONLY | O_TRUNC` flags | Denied; size/hash unchanged. T32 and T09 can differ: on OpenShell 0.1.x T09 passes while T32 still fails (the call reports `EACCES` yet the file is emptied). The result rows alone do not identify the cause; see `docs/UPSTREAM_ANALYSIS_T09_T32.md`. |
 | T33 | Filesystem | Bind a pathname UNIX socket inside `read_only` | Denied; socket absent. |
 | T34 | Filesystem | Create a FIFO inside `read_only` | Denied; FIFO absent. |
 | T35 | Filesystem | Execute a script stored under `read_only` | `EXPECTED`: execution remains allowed for this policy; separate tests measure content mutation. |

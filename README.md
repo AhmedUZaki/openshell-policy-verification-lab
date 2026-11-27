@@ -91,7 +91,7 @@ bash run-enforcement-audit.sh --all --openshell-versions 0.0.116,0.1.5,0.1.9
 
 Windows: `run-enforcement-audit.cmd nopause --all --compare`. Each version is downloaded and checked against its published SHA-256 list on first use (or ahead of time with `setup/4b-install-openshell-versions.sh`), gets its own run ID (`<id>-os<version>`) and its own signed evidence, and the version originally installed is restored afterwards (`--keep-version` skips that). The reports record the OpenShell version they measured; `audit-reports/COMPARISON.md` shows which tests changed between versions and checks the written predictions in `docs/UPSTREAM_ANALYSIS_T09_T32.md`.
 
-On OpenShell 0.1.x the network suite needs temporary gateway settings that the lab writes to `~/.config/openshell/` and removes again (see `setup/README.md`, section "Network tests on OpenShell 0.1.x"), and Docker Desktop needs host networking enabled. The test scripts were written against OpenShell 0.0.116. A newer release may change command-line options, policy schema, or gateway behavior; such a break is reported as `INCOMPLETE` (exit code 2), not as a pass or a failure of the enforcement claim. Switching versions keeps a separate gateway state per version and is not available on macOS.
+On OpenShell 0.1.x the network suite needs temporary gateway settings that the lab writes to `~/.config/openshell/` and removes again (see `setup/README.md`, section "Network tests on OpenShell 0.1.x"), and Docker Desktop needs host networking enabled. The test scripts were written against OpenShell 0.0.116. A newer release may change command-line options, policy schema, or gateway behavior; such a break is reported as `INCOMPLETE` (exit code 2), not as a pass or a failure of the enforcement claim. Switching versions keeps a separate gateway state per version and is not available on macOS. OpenShell 0.1.10 is the latest stable release as of 2026-11-26; it has not been run through the lab's 36 tests (see `docs/VERSIONS.md`).
 
 ## Automatic analysis
 
@@ -155,3 +155,7 @@ The analyzer treats T01–T10 as the core suite and T11–T36 as predefined exte
 The evaluation design, verdict semantics, evidence chain, bounded assurance claim, platform acceptance criteria, and threats to validity are documented in `docs/METHODOLOGY.md`, `docs/ASSURANCE_SCOPE.md`, `docs/PLATFORM_VALIDATION.md`, and (for the T09/T32 truncation findings) `docs/UPSTREAM_ANALYSIS_T09_T32.md`. The predefined test expectations are in `docs/CLAIMS.md` (T01–T10) and `docs/EXTENDED_TESTS.md` (T11–T36).
 
 The tracked repository contains only `.gitkeep` placeholders in generated-result directories; local runs may populate those ignored directories. Running `run-enforcement-audit.cmd` or `run-enforcement-audit.sh` generates fresh evidence belonging to the current user. Archived evidence under `archived-results/` is historical and is never selected by the analyzer.
+
+## License
+
+MIT, see `LICENSE`.

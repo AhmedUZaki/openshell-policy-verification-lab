@@ -119,6 +119,12 @@ a sign of a problem.
 
 ## Testing OpenShell 0.1.x (for example 0.1.9) on Docker Desktop: known blocker
 
+**Status (2026-11-26):** on the reference machine (Docker Desktop with WSL 2) OpenShell
+0.1.x sandboxes now start: the lab's full 36-test comparison ran on 0.1.9 on 2026-11-22,
+and OpenShell 0.1.1 to 0.1.10 were later run in a separate repository. What changed on the
+machine since the blocker was first recorded was not captured, so the notes below are kept
+as the troubleshooting record: if you see the symptom, they still apply.
+
 This applies only if you run the lab against OpenShell 0.1.x, for example with
 `run-enforcement-audit --compare` or `--openshell-version 0.1.9`. OpenShell
 0.0.116 does not need anything here.
@@ -147,7 +153,7 @@ may need "Apply & Restart" to take effect, which was not confirmed. The alternat
 described by upstream, `supervisor_network_mode = "bridge"` in the gateway's
 `gateway.toml`, has not been tried and is not applied by this lab.
 
-Until this is resolved, a 0.1.x run ends as `INCOMPLETE` (exit code 2) and the comparison
+While the symptom persists, a 0.1.x run ends as `INCOMPLETE` (exit code 2) and the comparison
 shows its tests as not measured. It is never reported as a pass.
 
 ### Network tests on OpenShell 0.1.x: what the lab does differently
