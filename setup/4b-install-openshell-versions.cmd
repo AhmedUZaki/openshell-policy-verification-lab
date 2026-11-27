@@ -8,6 +8,7 @@ REM   4b-install-openshell-versions.cmd                      downloads 0.0.116 a
 REM   4b-install-openshell-versions.cmd install 0.1.5 0.1.9  downloads the versions you list
 REM   4b-install-openshell-versions.cmd use 0.1.9            makes 0.1.9 the active version
 REM   4b-install-openshell-versions.cmd list                 shows stored versions
+REM   4b-install-openshell-versions.cmd available            shows every release on GitHub you can install now
 REM Add "nopause" as the LAST argument to skip the final pause.
 
 cd /d "%~dp0"
