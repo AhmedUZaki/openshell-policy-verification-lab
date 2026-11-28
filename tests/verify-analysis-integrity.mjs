@@ -24,7 +24,7 @@ const compareScript = path.join(testsDir, "compare-versions.mjs");
 const sourceNames = path.join(path.dirname(fileURLToPath(import.meta.url)), "test-names.mjs");
 const namesModule = path.join(testsDir, "test-names.mjs");
 
-const networkIds = ["N01", "N02", "N03", "N04", "N05", "N06", "N07", "N08", "N09", "N10"];
+const networkIds = ["N01", "N02", "N03", "N04", "N05", "N06", "N07", "N08", "N09", "N10", "N11", "N12"];
 const filesystemIds = [
   "F1_1", "F1_2",
   "F2_1", "F2_2", "F2_3", "F2_4", "F2_5", "F2_6", "F2_7", "F2_8", "F2_9", "F2_10",
@@ -125,7 +125,7 @@ try {
     const result = run(["--run-id", "baseline"]);
     expectExit(result, 0, "baseline");
     assert.equal(result.payload.overall, "PASS");
-    assert.equal(Object.keys(result.payload.results).length, 36);
+    assert.equal(Object.keys(result.payload.results).length, 38);
   });
 
   check("measured FAIL is preserved", () => {
@@ -240,7 +240,7 @@ try {
     expectExit(result, 0, "network-only attestation");
     assert.equal(result.payload.scope, "network");
     assert.equal(result.payload.evidence_attestation.verified, true);
-    assert.equal(Object.keys(result.payload.results).length, 10);
+    assert.equal(Object.keys(result.payload.results).length, 12);
   });
 
   check("missing exact run is incomplete", () => {
@@ -248,7 +248,7 @@ try {
     const result = run(["--run-id", "absent"]);
     expectExit(result, 2, "missing exact run");
     assert.equal(result.payload.overall, "INCOMPLETE");
-    assert.equal(result.payload.missing.length, 36);
+    assert.equal(result.payload.missing.length, 38);
   });
 
   check("unreadable report source exits as infrastructure failure", () => {

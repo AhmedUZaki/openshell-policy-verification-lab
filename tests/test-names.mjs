@@ -1,6 +1,6 @@
 // Short human-readable names, [English, Arabic], so a reader does not need the test docs open.
 export const testNames = {
-  // Network (N01-N10)
+  // Network (N01-N12)
   N01: ["Destination not allowed (HOST_B)", "وجهة غير مسموحة (HOST_B)"],
   N02: ["Proxy bypass (--noproxy)", "تجاوز الوسيط (--noproxy)"],
   N03: ["Binary identity (python)", "هوية البرنامج (python)"],
