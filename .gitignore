@@ -1,6 +1,5 @@
 # Local-only reference material and archived development evidence
 .local-reference-material/
-docs/upstream-analysis/
 tests/diagnostics/
 
 # Generated audit reports (keep directory placeholders)
