@@ -15,8 +15,6 @@ if ! command -v node >/dev/null 2>&1; then
   done
 fi
 command -v node >/dev/null 2>&1 || { printf 'node not found (checked PATH and ~/.nvm/versions/node/*/bin).\n' >&2; exit 2; }
-STATE_DIR="$ROOT/tests/network/.state"
-mkdir -p "$STATE_DIR"
 STAMP_BASE="${AUDIT_RUN_ID:-$(date +%Y%m%d-%H%M%S)}"
 
 TIERS=(restricted balanced open)
@@ -25,7 +23,8 @@ declare -A RUN_EXIT
 
 for tier in "${TIERS[@]}"; do
   printf '\n=== Tier: %s ===\n' "$tier"
-  policy_file="$STATE_DIR/fs-tier-$tier.yaml"
+  # Committed, not a throwaway state file: see tests/network/nemoclaw-tiers/SOURCE.md.
+  policy_file="$ROOT/policies/filesystem-tier-$tier.yaml"
   node "$ROOT/tests/network/nemoclaw-tiers/compose-tier-filesystem-policy.mjs" "$tier" "$policy_file"
 
   run_id="$STAMP_BASE-tier-$tier"

@@ -35,8 +35,15 @@ if (!basePolicy.includes(marker)) {
 }
 const block = networkPoliciesBlock(tier.presets);
 const composed = basePolicy.replace(marker, block ? `network_policies:\n${block}` : marker);
+const header = [
+  "# GENERATED FILE -- do not edit by hand.",
+  `# Regenerate with: node tests/network/nemoclaw-tiers/compose-tier-filesystem-policy.mjs ${tierName} ${path.relative(root, outFile).replaceAll("\\", "/")}`,
+  "# Source: policies/filesystem-restrictive.yaml (filesystem_policy/landlock/process) plus this",
+  `# tier's static presets from tests/network/nemoclaw-tiers/ (NemoClaw v0.0.140, commit 88fe14f3).`,
+  "",
+].join("\n");
 
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
-fs.writeFileSync(outFile, composed, "utf8");
+fs.writeFileSync(outFile, header + composed, "utf8");
 const staticPresets = tier.presets.filter((p) => !DYNAMIC_PRESETS.has(p));
 console.log(`Wrote ${path.relative(root, outFile).replaceAll("\\", "/")} (tier=${tierName}, presets=${staticPresets.join(", ") || "none"})`);
