@@ -24,13 +24,22 @@ set "SELECTED_SCOPE="
 if "%HAS_SCOPE%"=="0" (
   echo.
   echo Choose what to run:
-  echo   1. Network monotonicity only ^(offline, no sandbox: compares the real NemoClaw tier
-  echo      policy text so every destination allowed in a narrower tier stays allowed in a wider one^)
-  echo   2. Filesystem invariance only ^(real sandboxes, no internet: reruns the F1-F4 filesystem
-  echo      suite under all 3 tiers and checks the network tier changed none of its results^)
-  echo   3. Live network reachability only ^(real sandboxes + live internet: makes a real request
-  echo      to pypi.org and wttr.in under each tier to prove enforcement, not just the policy text^)
-  echo   4. All three together ^(1 and 2 always; 3 needs internet to pypi.org and wttr.in^)
+  echo.
+  echo   1. Network monotonicity only
+  echo        Offline, no sandbox. Compares the real NemoClaw tier policy text: every
+  echo        destination allowed in a narrower tier must stay allowed in a wider one.
+  echo.
+  echo   2. Filesystem invariance only
+  echo        Real sandboxes, no internet. Reruns the F1-F4 filesystem suite under all
+  echo        3 tiers and checks that the network tier changed none of its results.
+  echo.
+  echo   3. Live network reachability only
+  echo        Real sandboxes AND live internet. Makes a real request to pypi.org and
+  echo        wttr.in under each tier to prove enforcement, not just the policy text.
+  echo.
+  echo   4. All three together
+  echo        Runs 1 and 2 always; 3 is included too ^(needs internet^).
+  echo.
   choice /c 1234 /n /m "Selection [1-4]: "
   if errorlevel 4 set "SELECTED_SCOPE=--live" & goto scope_selected
   if errorlevel 3 set "SELECTED_SCOPE=--live-only" & goto scope_selected
@@ -49,14 +58,17 @@ for %%A in (%*) do if /i "%%~A"=="--live" set "RUNS_LIVE=1"
 for %%A in (%*) do if /i "%%~A"=="--live-only" set "RUNS_LIVE=1"
 if "%RUNS_LIVE%"=="1" if "%HAS_PAIRS%"=="0" (
   echo.
-  echo Live network reachability makes 6 real requests ^(2 destinations x 3 tiers^). Choose which to run:
-  echo   1. Restricted -^> pypi.org  ^(expected: denied^)
-  echo   2. Restricted -^> wttr.in   ^(expected: denied^)
-  echo   3. Balanced   -^> pypi.org  ^(expected: allowed^)
-  echo   4. Balanced   -^> wttr.in   ^(expected: denied^)
-  echo   5. Open       -^> pypi.org  ^(expected: allowed^)
-  echo   6. Open       -^> wttr.in   ^(expected: allowed^)
+  echo Live network reachability makes up to 6 real requests ^(2 destinations x 3 tiers^).
+  echo Choose which to run:
+  echo.
+  echo   1. Restricted -^> pypi.org      ^(expected: denied^)
+  echo   2. Restricted -^> wttr.in       ^(expected: denied^)
+  echo   3. Balanced   -^> pypi.org      ^(expected: allowed^)
+  echo   4. Balanced   -^> wttr.in       ^(expected: denied^)
+  echo   5. Open       -^> pypi.org      ^(expected: allowed^)
+  echo   6. Open       -^> wttr.in       ^(expected: allowed^)
   echo   7. All six
+  echo.
   set "SEL="
   set /p "SEL=Enter numbers separated by commas (e.g. 1,3,5), or 7 for all: "
   if "!SEL!"=="7" (
