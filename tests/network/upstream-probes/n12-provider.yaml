@@ -1,0 +1,28 @@
+id: local-test-api
+display_name: Local Test API
+description: Minimal custom provider profile pointed at this lab's own origin, used to test whether an injected credential can leak back to the sandbox via a reflecting endpoint.
+category: other
+inference_capable: false
+
+credentials:
+  - name: api_token
+    description: Bearer token for the local test server
+    env_vars: [API_TOKEN]
+    required: true
+    auth_style: bearer
+    header_name: authorization
+
+endpoints:
+  - host: host.openshell.internal
+    port: 443
+    path: /echo
+    protocol: rest
+    enforcement: enforce
+    request_body_credential_rewrite: true
+    rules:
+      - allow:
+          method: POST
+          path: /echo
+
+binaries:
+  - /usr/bin/curl

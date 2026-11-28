@@ -41,6 +41,15 @@ The automated runner performs the equivalent update for N06 and saves the final 
 openshell policy update "$SANDBOX" --remove-endpoint "${HOST_A}:${HOST_A_PORT}" --wait
 ```
 
+## Additional network tests — N11–N12 (post-M4, manual probes)
+
+N11 and N12 were added after the signed M4 run (N01–F4_4, 36 result rows) closed, so they are **not** part of that evidence bundle and are not counted in the "36 result rows" scope above. Each uses a policy that is deliberately *not* the restrictive baseline, since the finding in each case is specifically about what that baseline's validation or credential-rewrite layer fails to catch; both are run manually with the scripts in `tests/network/upstream-probes/`, not through `run-network-tests.sh`. Full reproduction, evidence, and reasoning are in `docs/upstream-analysis/` (local, gitignored reference material, not part of the signed bundle).
+
+| ID | Core? | Probe | Expected | Measured |
+|---|---|---|---|---|
+| **N11 Wildcard host validation** | manual, post-M4 | `openshell policy set ft-network --policy <policy with an overly broad wildcard host>  --wait`, then from inside the sandbox `curl` to a real external host | The pattern should be rejected by policy validation (deny-by-default); if accepted, the sandbox should still not reach arbitrary external hosts | **FAIL** — 7 of 8 tested wildcard patterns accepted; confirmed live egress to a real internet host on 0.1.9 and 0.1.10 (`docs/upstream-analysis/N11-wildcard-host-validation.md`) |
+| **N12 Credential leak via reflecting response** | manual, post-M4 | A provider credential is rewritten into an outbound request to a policy-approved endpoint that echoes the request body back in its response | The real credential must not reach the sandboxed process in either direction | **FAIL** — real credential value appeared in the response body on 0.1.9 (`docs/upstream-analysis/N12-credential-response-leak.md`) |
+
 ## Filesystem tests — F1 Read, F2 Modify, F3 Truncate, F4 Delete
 
 The four core claim tests (F1_1, F2_1, F3_1, F4_1) are each the first test in one of the four main categories. The remaining 22 tests are additional robustness probes grouped under the same category as the primary operation they exercise.

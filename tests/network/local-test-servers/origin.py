@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -25,9 +26,25 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def echo_body(self):
+        # Minimal "echo API" (a realistic shape: debug/error endpoints that reflect what they
+        # received). If OpenShell injected a real provider credential into this request, this
+        # handler will faithfully echo it back in the HTTP response body. Used by the N12
+        # credential-response-leak probe (docs/upstream-analysis/N12-credential-response-leak.md).
+        length = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(length) if length else b""
+        payload = {
+            "headers": dict(self.headers.items()),
+            "body": body.decode("utf-8", "replace"),
+        }
+        self.send_text(200, json.dumps(payload) + "\n")
+
     def do_GET(self):
         parsed = urlsplit(self.path)
         query = parse_qs(parsed.query)
+        if parsed.path == "/echo":
+            self.echo_body()
+            return
         if parsed.path == "/public" and query.get("stream") == ["1"]:
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
@@ -53,6 +70,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urlsplit(self.path)
+        if parsed.path == "/echo":
+            self.echo_body()
+            return
         length = int(self.headers.get("Content-Length", "0"))
         if length:
             self.rfile.read(length)
