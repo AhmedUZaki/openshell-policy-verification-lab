@@ -1,9 +1,9 @@
 // Compares test results between OpenShell versions and writes
-// audit-reports/COMPARISON.md, COMPARISON_AR.md and COMPARISON.json.
+// audit-reports/latest/COMPARISON.md, COMPARISON_AR.md and COMPARISON.json.
 //
 // It only re-presents statuses that the analyzer already measured (it never rewrites one).
 // Usage:
-//   node tests/compare-versions.mjs                  every run in audit-reports/runs
+//   node tests/compare-versions.mjs                  every run in audit-reports/run-history
 //   node tests/compare-versions.mjs --include-archive  also runs moved to archived-results/
 //   node tests/compare-versions.mjs --run-id A --run-id B   only these runs
 import fs from "node:fs";
@@ -34,7 +34,7 @@ const statusOrder = ["PASS", "FAIL", "EXPECTED", "LANDLOCK-LIMITATION", "INCONCL
 
 function analysisFiles() {
   const files = [];
-  const runsDir = path.join(outputDir, "runs");
+  const runsDir = path.join(outputDir, "run-history");
   if (fs.existsSync(runsDir)) {
     for (const name of fs.readdirSync(runsDir)) files.push(path.join(runsDir, name, "analysis.json"));
   }
@@ -157,9 +157,10 @@ const json = JSON.stringify({
   predictions: predictionRows,
 }, null, 2) + "\n";
 
-fs.mkdirSync(outputDir, { recursive: true });
+const latestDir = path.join(outputDir, "latest");
+fs.mkdirSync(latestDir, { recursive: true });
 for (const [name, content] of [["COMPARISON.md", render(false)], ["COMPARISON_AR.md", render(true)], ["COMPARISON.json", json]]) {
-  fs.writeFileSync(path.join(outputDir, name), content, "utf8");
+  fs.writeFileSync(path.join(latestDir, name), content, "utf8");
 }
 console.log(render(false));
-console.log("Comparison files: audit-reports/COMPARISON.md, COMPARISON_AR.md, and COMPARISON.json");
+console.log("Comparison files: audit-reports/latest/COMPARISON.md, COMPARISON_AR.md, and COMPARISON.json");

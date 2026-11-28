@@ -39,7 +39,7 @@ OpenShell versions (Linux and WSL only):
   (none)                     test the OpenShell that is installed now
   --openshell-version V      test release V (repeat the option to test several)
   --openshell-versions A,B   same, comma separated
-  --compare                  test the baseline (0.0.116) and candidate (0.1.9) and write audit-reports/COMPARISON.md
+  --compare                  test the baseline (0.0.116) and candidate (0.1.9) and write audit-reports/latest/COMPARISON.md
   --choose-version           list every OpenShell release available on GitHub right now (a new release appears
                              automatically) and pick one or more by number or by typing the version
   --all-installed            test every OpenShell version already installed on this machine (the menu choice "All")
@@ -213,7 +213,7 @@ if [[ "$DRY_RUN" == 1 ]]; then
   echo "Platform: $(uname -s)"
   if [[ ${#VERSIONS[@]} -gt 0 ]]; then
     echo "Would test OpenShell versions: ${VERSIONS[*]} (each downloaded and verified on first use, original version restored afterwards)"
-    [[ ${#VERSIONS[@]} -ge 2 ]] && echo 'Would write audit-reports/COMPARISON.md, COMPARISON_AR.md and COMPARISON.json'
+    [[ ${#VERSIONS[@]} -ge 2 ]] && echo 'Would write audit-reports/latest/COMPARISON.md, COMPARISON_AR.md and COMPARISON.json'
   fi
   echo 'Would move previous results to archived-results/<previous-run-id>/'
   [[ "$RUN_NETWORK" == 1 ]] && echo 'Would run: network setup -> create -> N01-N06 and N07-N10 -> cleanup'

@@ -39,7 +39,7 @@ for (const [dir, target] of sources) {
   for (const entry of fs.readdirSync(base, { withFileTypes: true })) {
     if (entry.name === ".gitkeep") continue;
     const full = path.join(base, entry.name);
-    if (dir === "audit-reports" && entry.isDirectory() && entry.name === "runs") {
+    if (dir === "audit-reports" && entry.isDirectory() && entry.name === "run-history") {
       for (const run of fs.readdirSync(full, { withFileTypes: true })) {
         const runPath = path.join(full, run.name);
         if (!run.isDirectory()) {
@@ -52,7 +52,14 @@ for (const [dir, target] of sources) {
       }
       continue;
     }
-    if (dir === "audit-reports" && entry.isDirectory() && entry.name === "by-version") {
+    if (dir === "audit-reports" && entry.isDirectory() && entry.name === "latest") {
+      for (const file of fs.readdirSync(full)) {
+        const filePath = path.join(full, file);
+        moves.push({ from: filePath, id: runIdFromReport(filePath), target: `${target}/latest`, name: file });
+      }
+      continue;
+    }
+    if (dir === "audit-reports" && entry.isDirectory() && entry.name === "latest-by-version") {
       for (const version of fs.readdirSync(full, { withFileTypes: true })) {
         if (!version.isDirectory()) {
           moves.push({ from: path.join(full, version.name), id: null, target, name: version.name });
@@ -60,7 +67,7 @@ for (const [dir, target] of sources) {
         }
         for (const file of fs.readdirSync(path.join(full, version.name))) {
           const filePath = path.join(full, version.name, file);
-          moves.push({ from: filePath, id: runIdFromReport(filePath), target: `${target}/by-version-${version.name}`, name: file });
+          moves.push({ from: filePath, id: runIdFromReport(filePath), target: `${target}/latest-by-version-${version.name}`, name: file });
         }
       }
       continue;
@@ -99,8 +106,8 @@ for (const item of moves) {
 }
 
 if (!dryRun) {
-  // Drop now-empty runs/<id> folders; rmdir refuses to remove anything that still holds files.
-  for (const group of ["runs", "by-version"]) {
+  // Drop now-empty run-history/<id> folders; rmdir refuses to remove anything that still holds files.
+  for (const group of ["run-history", "latest-by-version", "latest"]) {
     const groupDir = path.join(root, "audit-reports", group);
     if (!fs.existsSync(groupDir)) continue;
     for (const name of fs.readdirSync(groupDir)) {

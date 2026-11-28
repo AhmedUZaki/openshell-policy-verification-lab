@@ -84,7 +84,7 @@ function run(args = []) {
     windowsHide: true,
   });
   let payload = null;
-  const latest = path.join(outputDir, "LATEST.json");
+  const latest = path.join(outputDir, "latest", "LATEST.json");
   if (fs.existsSync(latest)) payload = JSON.parse(fs.readFileSync(latest, "utf8"));
   return { ...result, payload };
 }
@@ -273,8 +273,8 @@ try {
     assert.ok(fs.existsSync(path.join(archived, "filesystem", "filesystem-old-run.raw.log")));
     assert.ok(fs.existsSync(path.join(archived, "evidence-attestations", "evidence-old-run.sig")));
     assert.ok(fs.existsSync(path.join(archived, "analysis", "analysis.json")));
-    assert.ok(fs.existsSync(path.join(archived, "analysis", "LATEST.json")));
-    assert.ok(fs.existsSync(path.join(archived, "analysis", "by-version-unknown", "LATEST.json")));
+    assert.ok(fs.existsSync(path.join(archived, "analysis", "latest", "LATEST.json")));
+    assert.ok(fs.existsSync(path.join(archived, "analysis", "latest-by-version-unknown", "LATEST.json")));
     assert.deepEqual(fs.readdirSync(networkDir), [".gitkeep"]);
     assert.deepEqual(fs.readdirSync(filesystemDir), []);
     assert.deepEqual(fs.readdirSync(outputDir), []);
@@ -288,8 +288,8 @@ try {
     const result = run(["--run-id", "versioned"]);
     expectExit(result, 0, "versioned run");
     assert.equal(result.payload.openshell_version, "0.1.9");
-    assert.ok(fs.existsSync(path.join(outputDir, "by-version", "0.1.9", "LATEST.json")));
-    assert.ok(fs.readFileSync(path.join(outputDir, "LATEST.md"), "utf8").includes("OpenShell version: `0.1.9`"));
+    assert.ok(fs.existsSync(path.join(outputDir, "latest-by-version", "0.1.9", "LATEST.json")));
+    assert.ok(fs.readFileSync(path.join(outputDir, "latest", "LATEST.md"), "utf8").includes("OpenShell version: `0.1.9`"));
   });
 
   check("different OpenShell versions inside one run make it incomplete", () => {
@@ -310,13 +310,13 @@ try {
       env: { ...process.env, AUDIT_REQUESTED_OPENSHELL_VERSION: version },
     });
     expectExit(requested(["--run-id", "never-produced"], "0.1.9"), 2, "no evidence");
-    const noEvidence = JSON.parse(fs.readFileSync(path.join(outputDir, "LATEST.json"), "utf8"));
+    const noEvidence = JSON.parse(fs.readFileSync(path.join(outputDir, "latest", "LATEST.json"), "utf8"));
     assert.equal(noEvidence.openshell_version, "0.1.9");
     assert.equal(noEvidence.openshell_version_source, "requested, no evidence");
     makeRun("wrong-version", { openshellVersion: "0.0.116" });
     attest("wrong-version");
     expectExit(requested(["--run-id", "wrong-version"], "0.1.9"), 2, "request contradicted by evidence");
-    const contradicted = JSON.parse(fs.readFileSync(path.join(outputDir, "LATEST.json"), "utf8"));
+    const contradicted = JSON.parse(fs.readFileSync(path.join(outputDir, "latest", "LATEST.json"), "utf8"));
     assert.ok(contradicted.evidence_problems.some((item) => item.includes("was requested but the evidence measured")));
   });
 
@@ -330,7 +330,7 @@ try {
     expectExit(run(["--run-id", "v-new"]), 0, "newer version");
     const compared = spawnSync(process.execPath, [compareScript], { cwd: projectRoot, encoding: "utf8", windowsHide: true });
     assert.equal(compared.status, 0, `comparison failed: ${compared.stderr}`);
-    const comparison = JSON.parse(fs.readFileSync(path.join(outputDir, "COMPARISON.json"), "utf8"));
+    const comparison = JSON.parse(fs.readFileSync(path.join(outputDir, "latest", "COMPARISON.json"), "utf8"));
     assert.deepEqual(comparison.changed, ["F3_1", "F3_3"]);
     assert.ok(comparison.predictions.every((item) => item.verdict === "CONFIRMED"));
     assert.deepEqual(comparison.versions.map((item) => item.version), ["0.0.116", "0.1.9"]);

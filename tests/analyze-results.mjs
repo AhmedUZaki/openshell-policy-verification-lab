@@ -365,24 +365,26 @@ const markdownAr = [
   "",
 ].join("\n");
 
-// Layout: LATEST.* keep stable paths; the same files are also kept per run under runs/<run-id>/
-// and as the latest report of each OpenShell version under by-version/<version>/.
-const runDir = path.join(outputDir, "runs", selectedRunId ?? `unknown-${stamp}`);
-const versionDir = path.join(outputDir, "by-version", versionFolder);
+// Layout: latest/LATEST.* keeps stable paths; the same files are also kept per run under run-history/<run-id>/
+// and as the latest report of each OpenShell version under latest-by-version/<version>/.
+const runDir = path.join(outputDir, "run-history", selectedRunId ?? `unknown-${stamp}`);
+const versionDir = path.join(outputDir, "latest-by-version", versionFolder);
+const latestDir = path.join(outputDir, "latest");
 fs.mkdirSync(runDir, { recursive: true });
 fs.mkdirSync(versionDir, { recursive: true });
+fs.mkdirSync(latestDir, { recursive: true });
 for (const [directory, name, content] of [
   [runDir, "analysis.json", json],
   [runDir, "analysis.md", markdown],
   [runDir, "analysis_AR.md", markdownAr],
-  [outputDir, "LATEST.json", json],
-  [outputDir, "LATEST.md", markdown],
-  [outputDir, "LATEST_AR.md", markdownAr],
+  [latestDir, "LATEST.json", json],
+  [latestDir, "LATEST.md", markdown],
+  [latestDir, "LATEST_AR.md", markdownAr],
   [versionDir, "LATEST.json", json],
   [versionDir, "LATEST.md", markdown],
   [versionDir, "LATEST_AR.md", markdownAr],
 ]) fs.writeFileSync(path.join(directory, name), content, "utf8");
 
 console.log(markdown);
-console.log(`Analysis files: ${path.relative(root, outputDir)}/LATEST.md, LATEST_AR.md, LATEST.json, and ${path.relative(root, runDir).replaceAll("\\", "/")}/`);
+console.log(`Analysis files: ${path.relative(root, latestDir).replaceAll("\\", "/")}/LATEST.md, LATEST_AR.md, LATEST.json, and ${path.relative(root, runDir).replaceAll("\\", "/")}/`);
 process.exitCode = exitCode;
