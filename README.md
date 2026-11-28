@@ -173,6 +173,21 @@ The evaluation design, verdict semantics, evidence chain, bounded assurance clai
 
 The tracked repository contains only `.gitkeep` placeholders in generated-result directories; local runs may populate those ignored directories. Running `run-enforcement-audit.cmd` or `run-enforcement-audit.sh` generates fresh evidence belonging to the current user. Archived evidence under `archived-results/` is historical and is never selected by the analyzer.
 
+## Tier (metamorphic) checks
+
+Separately from the N01–F1_2 enforcement audit above, `run-tier-network-and-filesystem-checks.sh`/`.cmd` runs three metamorphic checks against the real, vendored NemoClaw Restricted/Balanced/Open tier presets (see `docs/CLAIMS.md`, "Policy comparisons", for what each one proves and how):
+
+```bash
+bash run-tier-network-and-filesystem-checks.sh                     # network monotonicity + filesystem invariance (no internet)
+bash run-tier-network-and-filesystem-checks.sh --live               # also live network reachability (real requests to pypi.org, wttr.in)
+```
+
+```text
+run-tier-network-and-filesystem-checks.cmd
+```
+
+The `.cmd` menu lets you pick which check(s) to run, and (when live reachability is included) which of the 6 tier/destination operations to run — one, several, or all. Flags mirror `run-enforcement-audit.sh`: `--monotonicity-only`, `--invariance-only`, `--live-only`, `--pairs=tier:dest,...` (e.g. `restricted:pypi,open:wttr`), `--openshell-version V` (must already be installed), `--keep-version`. Like `run-enforcement-audit`, this script never downloads an OpenShell version itself; see "Testing other OpenShell versions" above. Reports are written under `audit-reports/tier-checks/`.
+
 ## License
 
 MIT, see `LICENSE`.
