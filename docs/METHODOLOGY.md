@@ -59,6 +59,7 @@ OpenShell 0.0.116 answers a disallowed request with an HTTP 403 from its proxy, 
 - Product semantics and mediation scope can change across versions, so every conclusion must name the tested run and environment.
 - A passing control shows that the tested operation was viable in that setup; it does not eliminate every possible confounder.
 - Signed manifests detect post-attestation modification, but independent signer identity depends on preserving the public-key fingerprint outside the repository.
+- Kernel `AUDIT_LANDLOCK_ACCESS` records were evaluated as an attribution source and found unavailable on the reference environment: the WSL2 kernel (`6.18.58.1-microsoft-standard-WSL2`) compiles in `CONFIG_AUDIT`/`CONFIG_AUDITSYSCALL`, but `auditd` cannot enable the audit subsystem even as root (`Error sending enable request (Operation not permitted)`), a documented WSL2 kernel restriction rather than a configuration error. Attribution instead relies on `tests/diagnostics/landlock_overlay_probe.py`, which reproduces the denial outside OpenShell under a controlled Landlock ABI, combined with `docs/upstream-analysis/truncation-F3_1-F3_3.md`. A native Linux host or VM would be required to collect audit-based evidence.
 
 ## Interpretation discipline
 
