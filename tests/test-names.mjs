@@ -11,6 +11,8 @@ export const testNames = {
   N08: ["HEAD vs GET rule", "HEAD مقابل قاعدة GET"],
   N09: ["Path normalization (..)", "تطبيع المسار (..)"],
   N10: ["Allowed GET with query (control)", "GET مسموح مع query (ضبط إيجابي)"],
+  N11: ["Wildcard host validation", "التحقق من صيغ host بها wildcard"],
+  N12: ["Credential leak via reflecting response", "تسريب بيانات الاعتماد عبر رد منعكس"],
   // Filesystem - F1: Read
   F1_1: ["Read ungranted file", "قراءة ملف غير ممنوح"],
   F1_2: ["stat on ungranted file", "stat على ملف غير ممنوح"],

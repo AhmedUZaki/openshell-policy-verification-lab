@@ -1,6 +1,6 @@
 # M4 — OpenShell v0.0.116 Security Claims & Tests
 
-**Scope:** 10 core tests (6 network, 4 filesystem); **no agent or model provider**. The runner adds 26 predefined robustness tests (listed below), for 36 result rows in a full run.
+**Scope:** 10 core tests (6 network, 4 filesystem); **no agent or model provider**. The runner adds 28 predefined robustness tests (listed below), for 38 result rows in a full run.
 
 ## NVIDIA claims
 
@@ -18,7 +18,7 @@
 - **Filesystem:** Synthetic fixtures under `/opt/claims-fixtures/hidden/` (ungranted) and `/opt/claims-fixtures/readonly/` (`read_only`). Exclude writable ancestors; use `landlock.compatibility: hard_requirement` and verify enforcement. Ordinary UNIX permissions must otherwise allow the tested operations.
 - **Controls/evidence:** Filesystem mutation probes use a separate permissive OpenShell sandbox. Network probes use the allowed baseline and independent origin-health/log checks described above. Record versions, effective policy, applied ABI, commands, exit codes, logs, server requests, and file state. A generic error alone does not identify the enforcing layer. Each completed run is hashed and signed before analysis.
 
-## Network tests — N01–N10
+## Network tests — N01–N12
 
 The commands below express the tested operation. The automated runner adds the local port, unique correlation token, TLS material, timeouts, and raw-output capture needed for reproducible evidence.
 
@@ -34,6 +34,8 @@ The commands below express the tested operation. The automated runner adds the l
 | **N08** | extended | Send `HEAD /public` where an explicit GET rule exists | `EXPECTED`: OpenShell intentionally treats HEAD as matching GET; the origin receives the request. |
 | **N09** | extended | Send `/public/../private` with `--path-as-is` | Denied; origin receives no request. |
 | **N10** | extended | Send allowed `GET /public` with a query string | Allowed and logged. Positive control that detects over-blocking. |
+| **N11 Wildcard host validation** | extended | On the same sandbox, `policy set` a policy whose only endpoint is the host pattern `**.*.*`, then (if accepted) `curl` from inside the sandbox to a real external host (`www.example.com`), then revert to the restrictive baseline | The pattern should be rejected by policy validation (deny-by-default); if accepted, the sandbox should still not reach arbitrary external hosts. Full reasoning in `docs/upstream-analysis/N11-wildcard-host-validation.md`. |
+| **N12 Credential leak via reflecting response** | extended | On a second, provider-attached sandbox, send a request carrying the rewritten credential placeholder to a policy-approved endpoint (`policies/network-n12-provider-profile.yaml`) that echoes the request body back in its response | The real credential must not reach the sandboxed process in either direction. Full reasoning in `docs/upstream-analysis/N12-credential-response-leak.md`. |
 
 The automated runner performs the equivalent update for N06 and saves the final effective policy:
 
@@ -41,14 +43,7 @@ The automated runner performs the equivalent update for N06 and saves the final 
 openshell policy update "$SANDBOX" --remove-endpoint "${HOST_A}:${HOST_A_PORT}" --wait
 ```
 
-## Additional network tests — N11–N12 (post-M4, manual probes)
-
-N11 and N12 were added after the signed M4 run (N01–F4_4, 36 result rows) closed, so they are **not** part of that evidence bundle and are not counted in the "36 result rows" scope above. Each uses a policy that is deliberately *not* the restrictive baseline, since the finding in each case is specifically about what that baseline's validation or credential-rewrite layer fails to catch; both are run manually with the scripts in `tests/network/upstream-probes/`, not through `run-network-tests.sh`. Full reproduction, evidence, and reasoning are in `docs/upstream-analysis/` (local, gitignored reference material, not part of the signed bundle).
-
-| ID | Core? | Probe | Expected | Measured |
-|---|---|---|---|---|
-| **N11 Wildcard host validation** | manual, post-M4 | `openshell policy set ft-network --policy <policy with an overly broad wildcard host>  --wait`, then from inside the sandbox `curl` to a real external host | The pattern should be rejected by policy validation (deny-by-default); if accepted, the sandbox should still not reach arbitrary external hosts | **FAIL** — 7 of 8 tested wildcard patterns accepted; confirmed live egress to a real internet host on 0.1.9 and 0.1.10 (`docs/upstream-analysis/N11-wildcard-host-validation.md`) |
-| **N12 Credential leak via reflecting response** | manual, post-M4 | A provider credential is rewritten into an outbound request to a policy-approved endpoint that echoes the request body back in its response | The real credential must not reach the sandboxed process in either direction | **FAIL** — real credential value appeared in the response body on 0.1.9 (`docs/upstream-analysis/N12-credential-response-leak.md`) |
+N11 and N12 each use a policy or sandbox that is deliberately *not* the restrictive baseline used by N01–N10, since the finding in each case is specifically about what that baseline's validation or credential-rewrite layer fails to catch. N11 swaps `ft-network`'s policy for the duration of its probe, exactly as N06 does; N12 creates and tears down its own sandbox (`ft-network-n12`), profile, and provider instance within the same `run-network-tests.sh` invocation. Their fixture files live in `policies/` alongside the suite's other policies.
 
 ## Filesystem tests — F1 Read, F2 Modify, F3 Truncate, F4 Delete
 
@@ -112,7 +107,7 @@ A larger number of FAIL rows does not automatically mean a larger number of vuln
 
 ### Defensible conclusion
 
-For a named run ID, recorded environment, applied policies, and signed evidence bundle, this lab determines whether N01–N10 and F1_1–F4_4 matched their predefined expectations. A complete run supports only conclusions about those tested operations and boundaries.
+For a named run ID, recorded environment, applied policies, and signed evidence bundle, this lab determines whether N01–N12 and F1_1–F4_4 matched their predefined expectations. A complete run supports only conclusions about those tested operations and boundaries.
 
 ### Claim-to-test coverage
 
@@ -125,6 +120,7 @@ For a named run ID, recorded environment, applied policies, and signed evidence 
 | Read-only content and namespace integrity | F2_1, F3_1, F4_1 | F2_2–F2_4, F2_6–F2_8, F2_13, F2_14, F3_2, F3_3, F4_2–F4_4 |
 | Positive precision controls | allowed network baseline plus permissive filesystem controls | N10, F2_11, F2_17 |
 | Explicit mediation-scope observations | — | F2_5, F2_9, F2_10, F1_2 |
+| Policy-validation and credential-rewrite boundaries | — | N11, N12 |
 
 ### Conclusions this lab does not support
 

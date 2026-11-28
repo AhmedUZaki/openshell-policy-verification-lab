@@ -251,6 +251,76 @@ else
   openshell sandbox exec --name "$NAME" --no-tty --timeout 10 -- sh -c 'pid=$(cat /tmp/t06-stream.pid 2>/dev/null || true); [ -n "$pid" ] && kill "$pid" 2>/dev/null || true' >/dev/null 2>&1 || true
 fi
 
+WILDCARD_POLICY="$ROOT/policies/network-n11-wildcard-policy.yaml"
+N11_SET_OUTPUT="$(openshell policy set "$NAME" --policy "$WILDCARD_POLICY" --wait 2>&1)"
+N11_SET_RC=$?
+{
+  printf '\n===== N11 policy set | rc=%s =====\n%s\n' "$N11_SET_RC" "$N11_SET_OUTPUT"
+} >>"$RAWLOG"
+if [[ "$N11_SET_RC" -ne 0 ]]; then
+  record N11 PASS "The overly broad wildcard host pattern \`**.*.*\` was rejected by policy validation (rc=$N11_SET_RC)."
+else
+  run_sbx N11 "curl -k -sS -i --max-time 10 'https://www.example.com/public'; exit \$?"
+  if [[ "$RUN_INFRA" -ne 0 ]]; then
+    record N11 INCONCLUSIVE "Sandbox execution infrastructure failed while testing the accepted wildcard pattern."
+  elif [[ "$RUN_OUTPUT" == *'Example Domain'* ]]; then
+    record N11 FAIL "The wildcard host pattern \`**.*.*\` was accepted by policy validation and the sandbox reached a real external host (client rc=$RUN_RC)."
+  else
+    record N11 INCONCLUSIVE "The wildcard pattern was accepted, but reachability to a real external host could not be confirmed (client rc=$RUN_RC)."
+  fi
+  openshell policy set "$NAME" --policy "$HERE/.state/effective-policy-initial.yaml" --wait >/dev/null 2>&1
+fi
+
+N12_SANDBOX="${NAME}-n12"
+N12_PROFILE="$ROOT/policies/network-n12-provider-profile.yaml"
+N12_BASE_POLICY="$ROOT/policies/network-n12-base-policy.yaml"
+N12_PROVIDER="testprov-$STAMP"
+N12_SECRET="SECRET-$STAMP"
+N12_INFRA=0
+N12_SETUP_LOG="$(openshell profile import -f "$N12_PROFILE" 2>&1)" || N12_INFRA=1
+N12_SETUP_LOG+=$'\n'"$(openshell provider create --name "$N12_PROVIDER" --type local-test-api --credential "API_TOKEN=$N12_SECRET" 2>&1)" || N12_INFRA=1
+if [[ "$N12_INFRA" -eq 0 ]]; then
+  if [[ "$(uname -s)" == Darwin ]]; then
+    N12_SOURCE="$HERE/network-test-sandbox"
+  else
+    N12_SOURCE="openshell-policy-verification/network-test-sandbox:local"
+  fi
+  N12_CREATE_LOG="$(openshell sandbox create --name "$N12_SANDBOX" --from "$N12_SOURCE" \
+    --policy "$N12_BASE_POLICY" --approval-mode manual \
+    --env "HOST_A=host.openshell.internal" --env "HOST_A_PORT=443" \
+    --provider "$N12_PROVIDER" --detach 2>&1)" || N12_INFRA=1
+  N12_SETUP_LOG+=$'\n'"$N12_CREATE_LOG"
+fi
+{
+  printf '\n===== N12 setup | infra_error=%s =====\n%s\n' "$N12_INFRA" "$N12_SETUP_LOG"
+} >>"$RAWLOG"
+if [[ "$N12_INFRA" -ne 0 ]]; then
+  record N12 INCONCLUSIVE "Provider/profile/sandbox setup failed; the credential-leak probe could not run (see the N12 setup section of the raw log)."
+else
+  N12_OUTPUT="$(openshell sandbox exec --name "$N12_SANDBOX" --no-tty --timeout 15 -- sh -c '
+    body="{\"token\":\"$API_TOKEN\"}"
+    printf "SENT:%s\n" "$body"
+    curl -k -sS --max-time 10 -H "Content-Type: application/json" -d "$body" -X POST https://host.openshell.internal:443/echo
+  ' 2>&1)"
+  N12_RC=$?
+  {
+    printf '\n===== N12 | sandbox=%s | rc=%s =====\n%s\n' "$N12_SANDBOX" "$N12_RC" "$N12_OUTPUT"
+  } >>"$RAWLOG"
+  SENT_LINE="$(printf '%s\n' "$N12_OUTPUT" | grep -m1 '^SENT:')"
+  if [[ "$N12_RC" -ne 0 ]]; then
+    record N12 INCONCLUSIVE "The credential-leak probe command failed to execute (rc=$N12_RC)."
+  elif [[ -z "$SENT_LINE" || "$SENT_LINE" == *"$N12_SECRET"* ]]; then
+    record N12 INCONCLUSIVE "The sandbox already held the real credential before sending the request; the probe precondition failed."
+  elif [[ "$N12_OUTPUT" == *"$N12_SECRET"* ]]; then
+    record N12 FAIL "The real provider credential appeared in the response body the sandbox received, although it never appeared in the outgoing request."
+  else
+    record N12 PASS "The real provider credential did not appear anywhere in the response; the placeholder stayed opaque."
+  fi
+fi
+openshell sandbox delete "$N12_SANDBOX" >/dev/null 2>&1 || true
+openshell provider delete "$N12_PROVIDER" >/dev/null 2>&1 || true
+openshell profile delete local-test-api >/dev/null 2>&1 || true
+
 EVIDENCE_COMPLETE=yes
 OPEN_VERSION="$(openshell --version 2>&1 | tail -n 1)" || EVIDENCE_COMPLETE=no
 KERNEL="$(uname -r)"

@@ -14,7 +14,7 @@ The component table further down is the **reference** environment. The lab can a
 
 The change between baseline and candidate is explained in `docs/upstream-analysis/truncation-F3_1-F3_3.md`: F3_1 is explained by the Landlock ABI (V2 to V3) and passes on 0.1.9; F3_3 is **not** explained by the ABI and still fails on 0.1.9.
 
-Two further, post-M4 manual probes (N11, N12; see `docs/CLAIMS.md`, "Additional network tests") were also measured on the candidate and latest-stable releases: N11 (wildcard host validation) on 0.1.9 and 0.1.10, N12 (credential leak via a reflecting response) on 0.1.9 only. Details in `docs/upstream-analysis/N11-wildcard-host-validation.md` and `docs/upstream-analysis/N12-credential-response-leak.md`.
+N11 (wildcard host validation) and N12 (credential leak via a reflecting response) are part of the same N01–N12 network suite (see `docs/CLAIMS.md`). Background and the original multi-version reproduction (0.1.9, 0.1.10) are in `docs/upstream-analysis/N11-wildcard-host-validation.md` and `docs/upstream-analysis/N12-credential-response-leak.md`.
 
 | Component | Version |
 |---|---|

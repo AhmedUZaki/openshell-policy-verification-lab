@@ -116,7 +116,7 @@ const filesystemName = selectedRunId ? filesystemRuns.get(selectedRunId)?.name ?
 const networkFile = networkName ? path.join(networkDir, networkName) : null;
 const filesystemFile = filesystemName ? path.join(filesystemDir, filesystemName) : null;
 
-const networkIds = new Set(["N01", "N02", "N03", "N04", "N05", "N06", "N07", "N08", "N09", "N10"]);
+const networkIds = new Set(["N01", "N02", "N03", "N04", "N05", "N06", "N07", "N08", "N09", "N10", "N11", "N12"]);
 const filesystemIds = new Set([
   "F1_1", "F1_2",
   "F2_1", "F2_2", "F2_3", "F2_4", "F2_5", "F2_6", "F2_7", "F2_8", "F2_9", "F2_10",

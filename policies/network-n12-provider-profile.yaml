@@ -1,6 +1,6 @@
 id: local-test-api
 display_name: Local Test API
-description: Minimal custom provider profile pointed at this lab's own origin, used to test whether an injected credential can leak back to the sandbox via a reflecting endpoint.
+description: Minimal custom provider profile pointed at this lab's own origin, used by N12 to test whether an injected credential can leak back to the sandbox via a reflecting endpoint.
 category: other
 inference_capable: false
 

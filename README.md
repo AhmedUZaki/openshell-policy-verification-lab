@@ -1,11 +1,12 @@
 # OpenShell policy verification lab
 
-This project runs thirty-six local enforcement tests and automatically analyzes their evidence:
+This project runs thirty-eight local enforcement tests and automatically analyzes their evidence:
 
 - N01–N06: network destination, proxy bypass, binary identity, HTTP method/path, and policy-generation revocation.
 - F1_1–F4_1: inaccessible and read-only filesystem behavior.
 - F3_2–F2_5 and F2_6–F1_2: extended content, namespace, symlink, special-file, execution, and metadata filesystem probes.
 - N07–N10: copied-binary identity, additional REST boundaries, path normalization, and a positive precision control.
+- N11–N12: wildcard host policy validation and provider-credential leak via a reflecting response.
 
 No public test server, domain, Cloudflare account, model provider, or API credential is required.
 
@@ -31,7 +32,7 @@ Requirements: Docker Desktop, WSL 2, and the `Ubuntu-24.04` distribution configu
 run-enforcement-audit.cmd
 ```
 
-The interactive menu asks whether to run network tests, filesystem tests, or both. Choosing network runs N01–N06 and N07–N10; choosing filesystem runs F1_1–F2_5 and F2_6–F1_2.
+The interactive menu asks whether to run network tests, filesystem tests, or both. Choosing network runs N01–N06, N07–N10, and N11–N12; choosing filesystem runs F1_1–F2_5 and F2_6–F1_2.
 
 For a terminal or CI job without the final pause:
 
@@ -75,9 +76,9 @@ When no scope option is supplied in an interactive terminal, the runner shows bi
 
 | Scope | Tests | Result rows |
 |---|---|---|
-| `--network-only` | N01–N06, N07–N10 | 10 |
+| `--network-only` | N01–N06, N07–N10, N11–N12 | 12 |
 | `--filesystem-only` | F1_1–F2_5, F2_6–F1_2 | 26 |
-| `--all` | N01–F1_2 | 36 |
+| `--all` | N01–F1_2 | 38 |
 
 ## Testing other OpenShell versions
 
@@ -164,7 +165,7 @@ The overall label is `PASS_WITH_LIMITATIONS` rather than plain `PASS` whenever a
 
 Before producing an overall result, the analyzer verifies the signed evidence manifest and every recorded SHA-256 digest. It also verifies the run ID embedded in each report, rejects duplicate test rows, checks the evidence-complete marker, and requires the corresponding raw logs, origin logs, and policy snapshots. Missing, modified, unsigned, or malformed evidence makes the run `INCOMPLETE` with exit code `2`.
 
-The analyzer treats N01–N06 and F1_1/F2_1/F3_1/F4_1 as the core suite and the remaining N07–N10 and F1_2/F2_2–F2_17/F3_2–F3_3/F4_2–F4_4 as predefined extended robustness tests. It separates enforcement failures from `LANDLOCK-LIMITATION` and `EXPECTED` behavior. Correlated failures are grouped to avoid double counting, but the analyzer does not infer a specific root cause from correlation alone.
+The analyzer treats N01–N06 and F1_1/F2_1/F3_1/F4_1 as the core suite and the remaining N07–N12 and F1_2/F2_2–F2_17/F3_2–F3_3/F4_2–F4_4 as predefined extended robustness tests. It separates enforcement failures from `LANDLOCK-LIMITATION` and `EXPECTED` behavior. Correlated failures are grouped to avoid double counting, but the analyzer does not infer a specific root cause from correlation alone.
 
 The evaluation design, verdict semantics, evidence chain, bounded assurance claim, platform acceptance criteria, and threats to validity are documented in `docs/METHODOLOGY.md` and (for the F3_1/F3_3 truncation findings) `docs/upstream-analysis/truncation-F3_1-F3_3.md`. The predefined test expectations, including the bounded assurance statement and claim-to-test coverage, are all in `docs/CLAIMS.md`. Platform acceptance criteria and version history are in `docs/VERSIONS.md`.
 
