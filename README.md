@@ -66,13 +66,16 @@ The runner permits the intended Apple Silicon workflow but it is not marked empi
 --filesystem-only
 --keep
 --dry-run
---openshell-version VERSION   (repeatable)
---openshell-versions V1,V2
+--openshell-version VERSION   (repeatable; must already be installed)
+--openshell-versions V1,V2    (same, comma separated; each must already be installed)
 --compare
+--all-installed
 --keep-version
 ```
 
-When no scope option is supplied in an interactive terminal, the runner shows bilingual menus. On Linux and WSL (Windows through `run-enforcement-audit.cmd`) the first one asks which OpenShell version to test: 0.0.116, 0.1.9, or all (both, then a comparison). The next asks which tests to run. Any other version is chosen with `--openshell-version`. Passing a scope option or a version option skips the questions. Scripts and CI jobs must pass one explicit scope option.
+When no scope option is supplied in an interactive terminal, the runner shows a bilingual menu asking which tests to run (both, network only, or filesystem only). Passing a scope option skips that question. Scripts and CI jobs must pass one explicit scope option.
+
+This script never downloads an OpenShell version itself; every version named with `--openshell-version(s)` must already be installed. On Windows, `run-enforcement-audit.cmd` prompts first (via `choose-openshell-version.cmd`) to download and activate a version before the scope question; on Linux/WSL, run `bash choose-openshell-version.sh` first. See "Testing other OpenShell versions" below.
 
 | Scope | Tests | Result rows |
 |---|---|---|
@@ -82,29 +85,28 @@ When no scope option is supplied in an interactive terminal, the runner shows bi
 
 ## Testing other OpenShell versions
 
-By default the runner tests whichever OpenShell is installed. On Linux and WSL it can also test other releases, one run per version:
+By default the runner tests whichever OpenShell is installed. On Linux and WSL it can also test other releases that are already installed, one run per version. Downloading a new version always goes through `choose-openshell-version.sh` / `.cmd` first — `run-enforcement-audit.sh`/`.cmd` never download one themselves:
 
 ```bash
-bash run-enforcement-audit.sh --all --compare                       # baseline 0.0.116 and candidate 0.1.9
+bash choose-openshell-version.sh                                    # the only place that downloads: pick 0.0.116 / 0.1.9 / 0.1.10 by number
+bash run-enforcement-audit.sh --all --compare                       # baseline 0.0.116 and candidate 0.1.9 (both must already be installed)
 bash run-enforcement-audit.sh --all --openshell-version 0.1.9
 bash run-enforcement-audit.sh --all --openshell-versions 0.0.116,0.1.5,0.1.9
 bash run-enforcement-audit.sh --all --openshell-version 0.1.10
-bash run-enforcement-audit.sh --all --choose-version                # pick any release listed on GitHub right now
 bash run-enforcement-audit.sh --all --all-installed                 # every version already installed here, then compare
-bash run-enforcement-audit.sh --all --all-available                 # EVERY release on GitHub right now, then compare (hours)
 bash setup/4b-install-openshell-versions.sh available               # just show the releases available on GitHub
-bash setup/4b-install-openshell-versions.sh prepare choose          # pick, download and verify, without running tests
+bash setup/4b-install-openshell-versions.sh prepare choose          # pick any release on GitHub, download and verify, without running tests
 ```
 
-**Any available release.** `--choose-version` and `--all-available` read the release list from GitHub every time they run, so a new OpenShell release appears without any change to the lab. The list holds only stable releases that ship the Linux components the lab downloads, newest first; type list numbers and/or versions (`1 4`, `0.1.7`). GitHub's API allows 60 unauthenticated requests per hour per network address; when it refuses (or is unreachable) the lab falls back, in order, to the repository's tag list (newest 25, not checked for downloadable builds), the releases feed, the list saved by the last successful call, and finally a short built-in list; you can always type any version. Setting `GITHUB_TOKEN` in the environment raises the API limit to 5000 per hour. `--all-available` needs a list and stops with a message when none can be read. **"All" in the menu means the versions already installed on this machine** (`--all-installed`): every version you chose before is kept in the store, so "All" grows as you try more versions, and it never starts a large download. Only 0.0.116 and 0.1.9 were validated in full; any other release goes through the same scripts and an incompatibility is reported as `INCOMPLETE`, never as a pass.
+**"All" means the versions already installed on this machine** (`--all-installed`): every version you downloaded before (via `choose-openshell-version.sh`/`.cmd`) is kept in the store, so "All" grows as you try more versions, and it never starts a download by itself. Only 0.0.116 and 0.1.9 were validated in full; any other release goes through the same scripts and an incompatibility is reported as `INCOMPLETE`, never as a pass. To fetch and verify any release listed on GitHub (not just the 3 pinned versions), run `bash setup/4b-install-openshell-versions.sh prepare choose` directly; it reads the release list from GitHub every time, so a new OpenShell release appears without any change to the lab, and falls back (GitHub's tag list, then the releases feed, then a short built-in list) when the API is unreachable or rate-limited (`GITHUB_TOKEN` raises the limit to 5000/hour).
 
 **Interactive menu** (no scope or version option given; double-click `run-enforcement-audit.cmd` on Windows). The steps are in this order:
 
-1. *Choose the version.* `1` 0.0.116, `2` 0.1.9, `3` 0.1.10, `4` **All = every version installed on this machine now** (always the option before the last), `5` another version: pick one or more from the list of every available release. The chosen versions are downloaded and verified immediately.
+1. *Choose the version* (`choose-openshell-version.cmd`, only when none was given on the command line): `1` 0.0.116, `2` 0.1.9, `3` 0.1.10, or `4` **All = every version installed on this machine now**. The chosen version(s) are downloaded and verified immediately. (On Linux/WSL, run `bash choose-openshell-version.sh` yourself beforehand instead; the `.sh` runner never prompts for a version.)
 2. *Choose the tests.* Both, network only, or filesystem only.
 3. The tests run on each chosen version, and two or more versions are compared.
 
-Windows without the menu: `run-enforcement-audit.cmd nopause --all --compare`. Each version is downloaded and checked against its published SHA-256 list on first use (or ahead of time with `setup/4b-install-openshell-versions.sh`), gets its own run ID (`<id>-os<version>`) and its own signed evidence, and the version originally installed is restored afterwards (`--keep-version` skips that). The reports record the OpenShell version they measured; `audit-reports/enforcement-audit/latest/COMPARISON.md` shows which tests changed between versions and checks the written predictions in `docs/upstream-analysis/truncation-F3_1-F3_3.md`.
+Windows without the menu: `run-enforcement-audit.cmd nopause --all --compare`. Each version is checked against its published SHA-256 list when downloaded via `choose-openshell-version.sh`/`.cmd` (or ahead of time with `setup/4b-install-openshell-versions.sh`), gets its own run ID (`<id>-os<version>`) and its own signed evidence, and the version originally installed is restored afterwards (`--keep-version` skips that). The reports record the OpenShell version they measured; `audit-reports/enforcement-audit/latest/COMPARISON.md` shows which tests changed between versions and checks the written predictions in `docs/upstream-analysis/truncation-F3_1-F3_3.md`.
 
 On OpenShell 0.1.x the network suite needs temporary gateway settings that the lab writes to `~/.config/openshell/` and removes again (see `setup/README.md`, section "Network tests on OpenShell 0.1.x"), and Docker Desktop needs host networking enabled. The test scripts were written against OpenShell 0.0.116. A newer release may change command-line options, policy schema, or gateway behavior; such a break is reported as `INCOMPLETE` (exit code 2), not as a pass or a failure of the enforcement claim. Switching versions keeps a separate gateway state per version and is not available on macOS. OpenShell 0.1.10 is the latest stable release as of 2026-11-26. The lab's filesystem suite (26 tests) was run on it that day: 20 PASS, 1 FAIL (F3_3), 1 EXPECTED, 4 LANDLOCK-LIMITATION, 0 INCONCLUSIVE; the network suite was not run on it (see `docs/VERSIONS.md`).
 
