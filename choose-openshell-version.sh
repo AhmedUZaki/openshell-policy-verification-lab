@@ -25,19 +25,16 @@ echo "  2. 0.1.9" >&2
 echo "  3. 0.1.10" >&2
 if [[ "$MODE" == "multi" ]]; then
   echo "  4. All: every version installed on this machine now, then compare them" >&2
-  echo "  5. Another version: list every release available now (new releases appear automatically)" >&2
-  read -r -p "Selection [1-5]: " SEL
-else
-  echo "  4. Another version: list every release available now (new releases appear automatically)" >&2
   read -r -p "Selection [1-4]: " SEL
+else
+  read -r -p "Selection [1-3]: " SEL
 fi
 
 case "$SEL" in
   1) PREP=0.0.116 ;;
   2) PREP=0.1.9 ;;
   3) PREP=0.1.10 ;;
-  4) if [[ "$MODE" == "multi" ]]; then PREP=all; else PREP=choose; fi ;;
-  5) if [[ "$MODE" == "multi" ]]; then PREP=choose; else echo "Invalid selection." >&2; exit 2; fi ;;
+  4) if [[ "$MODE" == "multi" ]]; then PREP=all; else echo "Invalid selection." >&2; exit 2; fi ;;
   *) echo "Invalid selection." >&2; exit 2 ;;
 esac
 

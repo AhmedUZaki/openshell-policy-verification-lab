@@ -31,17 +31,13 @@ echo   2. 0.1.9
 echo   3. 0.1.10
 if /i "%MODE%"=="multi" (
   echo   4. All: every version installed on this machine now, then compare them
-  echo   5. Another version: list every release available now ^(new releases appear automatically^)
-  choice /c 12345 /n /m "Selection [1-5]: "
-  if errorlevel 5 set "PREP=choose" & goto prepare
+  choice /c 1234 /n /m "Selection [1-4]: "
   if errorlevel 4 set "PREP=all" & goto prepare
   if errorlevel 3 set "PREP=0.1.10" & goto prepare
   if errorlevel 2 set "PREP=0.1.9" & goto prepare
   set "PREP=0.0.116"
 ) else (
-  echo   4. Another version: list every release available now ^(new releases appear automatically^)
-  choice /c 1234 /n /m "Selection [1-4]: "
-  if errorlevel 4 set "PREP=choose" & goto prepare
+  choice /c 123 /n /m "Selection [1-3]: "
   if errorlevel 3 set "PREP=0.1.10" & goto prepare
   if errorlevel 2 set "PREP=0.1.9" & goto prepare
   set "PREP=0.0.116"
