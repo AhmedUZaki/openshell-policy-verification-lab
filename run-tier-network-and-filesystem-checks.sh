@@ -8,8 +8,8 @@
 #      hosts; opt-in only, since it is the one check in this lab that needs live internet)
 #
 # Usage:
-#   bash tests/tier-checks/run-tier-network-and-filesystem-checks.sh            (1 and 2 only)
-#   bash tests/tier-checks/run-tier-network-and-filesystem-checks.sh --live     (all three)
+#   bash run-tier-network-and-filesystem-checks.sh            (1 and 2 only)
+#   bash run-tier-network-and-filesystem-checks.sh --live     (all three)
 #
 # Exit codes:
 #   0  every check that ran passed
@@ -17,7 +17,7 @@
 #   2  setup or infrastructure error (a check could not produce a result)
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIVE=0
 for arg in "$@"; do
   case "$arg" in
