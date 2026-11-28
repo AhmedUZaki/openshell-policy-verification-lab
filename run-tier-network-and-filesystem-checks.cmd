@@ -19,6 +19,19 @@ if errorlevel 1 (
   exit /b 2
 )
 
+rem Choose the OpenShell version, unless --openshell-version was already given.
+set "HAS_VERSION=0"
+for %%A in (%*) do if /i "%%~A"=="--openshell-version" set "HAS_VERSION=1"
+set "OS_VERSION_ARG="
+if "%HAS_VERSION%"=="0" (
+  echo.
+  echo Which OpenShell version? Leave blank to keep whatever is active now.
+  echo ^(e.g. 0.0.116, 0.1.9, 0.1.10 -- downloaded and verified first if needed^)
+  set "OSVER="
+  set /p "OSVER=Version, or blank: "
+  if not "!OSVER!"=="" set "OS_VERSION_ARG=--openshell-version !OSVER!"
+)
+
 rem Choose what to run, unless a scope flag was already given on the command line.
 set "SELECTED_SCOPE="
 if "%HAS_SCOPE%"=="0" (
@@ -100,9 +113,9 @@ rem Note for direct command-line use (not the menus above): cmd.exe splits an un
 rem --pairs=a:b,c:d into separate %N parameters at "=", same as it does inside "for (%*)".
 rem Quote it, e.g.: run-tier-network-and-filesystem-checks.cmd nopause --live-only "--pairs=restricted:pypi"
 if /i "%~1"=="nopause" (
-  wsl -d Ubuntu-24.04 bash ./run-tier-network-and-filesystem-checks.sh %SELECTED_SCOPE% %PAIRS_ARG% %2 %3 %4
+  wsl -d Ubuntu-24.04 bash ./run-tier-network-and-filesystem-checks.sh %SELECTED_SCOPE% %PAIRS_ARG% %OS_VERSION_ARG% %2 %3 %4
 ) else (
-  wsl -d Ubuntu-24.04 bash ./run-tier-network-and-filesystem-checks.sh %SELECTED_SCOPE% %PAIRS_ARG% %*
+  wsl -d Ubuntu-24.04 bash ./run-tier-network-and-filesystem-checks.sh %SELECTED_SCOPE% %PAIRS_ARG% %OS_VERSION_ARG% %*
 )
 set "RESULT=%ERRORLEVEL%"
 

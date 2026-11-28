@@ -19,6 +19,9 @@
 #   bash run-tier-network-and-filesystem-checks.sh --live-only          (3 only)
 #   ... --pairs=restricted:pypi,open:wttr   (with --live or --live-only: run only these of the
 #       6 live operations, instead of all of them; see run-live-network-reachability.sh)
+#   ... --openshell-version V   (test OpenShell V instead of whatever is active; downloads and
+#       verifies it first if needed, same as run-enforcement-audit.sh. Linux/WSL only.)
+#   ... --keep-version          (with --openshell-version: do not switch back afterwards)
 #
 # Exit codes:
 #   0  every check that ran passed
@@ -31,18 +34,27 @@ RUN_MONO=1
 RUN_INVARIANCE=1
 RUN_LIVE=0
 PAIRS="all"
-for arg in "$@"; do
-  case "$arg" in
+OPENSHELL_VERSION=""
+KEEP_VERSION=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --live) RUN_LIVE=1 ;;
     --monotonicity-only) RUN_MONO=1; RUN_INVARIANCE=0; RUN_LIVE=0 ;;
     --invariance-only) RUN_MONO=0; RUN_INVARIANCE=1; RUN_LIVE=0 ;;
     --live-only) RUN_MONO=0; RUN_INVARIANCE=0; RUN_LIVE=1 ;;
-    --pairs=*) PAIRS="${arg#--pairs=}" ;;
+    --pairs=*) PAIRS="${1#--pairs=}" ;;
+    --openshell-version)
+      shift
+      OPENSHELL_VERSION="${1:-}"
+      [[ -n "$OPENSHELL_VERSION" ]] || { echo "--openshell-version requires a value." >&2; exit 2; }
+      ;;
+    --keep-version) KEEP_VERSION=1 ;;
     *)
-      echo "Usage: $0 [--live|--monotonicity-only|--invariance-only|--live-only] [--pairs=tier:dest,...]" >&2
+      echo "Usage: $0 [--live|--monotonicity-only|--invariance-only|--live-only] [--pairs=tier:dest,...] [--openshell-version V] [--keep-version]" >&2
       exit 2
       ;;
   esac
+  shift
 done
 
 export PATH="$HOME/.local/bin:$PATH"
@@ -52,6 +64,24 @@ if ! command -v node >/dev/null 2>&1; then
   done
 fi
 command -v node >/dev/null 2>&1 || { echo "node not found (checked PATH and ~/.nvm/versions/node/*/bin)." >&2; exit 2; }
+
+# shellcheck disable=SC1091
+source "$ROOT/tests/shared/openshell-versions.sh"
+ORIGINAL_VERSION="$(ovl_current)"
+RESTORE_NEEDED=0
+[[ -n "$OPENSHELL_VERSION" && "$KEEP_VERSION" == 0 ]] && RESTORE_NEEDED=1
+restore_original_version() {
+  if [[ $RESTORE_NEEDED -eq 1 && -n "$ORIGINAL_VERSION" && "$(ovl_current)" != "$ORIGINAL_VERSION" ]]; then
+    echo "=== Restoring OpenShell $ORIGINAL_VERSION ==="
+    ovl_use "$ORIGINAL_VERSION" || echo "Warning: could not switch back to OpenShell $ORIGINAL_VERSION; run: bash setup/4b-install-openshell-versions.sh use $ORIGINAL_VERSION" >&2
+  fi
+}
+trap restore_original_version EXIT
+
+if [[ -n "$OPENSHELL_VERSION" ]]; then
+  ovl_use "$OPENSHELL_VERSION" || { echo "Could not activate OpenShell $OPENSHELL_VERSION." >&2; exit 2; }
+fi
+printf 'OpenShell version under test: %s\n' "$(ovl_current)"
 
 RUN_ID="${AUDIT_RUN_ID:-$(date +%Y%m%d-%H%M%S)}"
 RESULT=0
