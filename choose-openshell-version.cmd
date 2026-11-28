@@ -1,13 +1,18 @@
 @echo off
-rem Shared OpenShell version picker, meant to be invoked with "call" from another .cmd in the
-rem project root (run-enforcement-audit.cmd, run-tier-network-and-filesystem-checks.cmd). It is
-rem NOT a standalone entry point: it has no setlocal of its own, so the variables it sets
-rem (PREPARED, PREP_FAILED) are visible to the caller after the call returns.
+rem Windows version of choose-openshell-version.sh: the ONLY place in this lab that downloads a
+rem new OpenShell version. Meant to be invoked with "call" from another .cmd in the project root
+rem (run-enforcement-audit.cmd, run-tier-network-and-filesystem-checks.cmd). It is NOT a
+rem standalone entry point: it has no setlocal of its own, so the variables it sets (PREPARED,
+rem PREP_FAILED) are visible to the caller after the call returns.
+rem
+rem (Kept as a native batch menu rather than forwarding to choose-openshell-version.sh's "read -p"
+rem prompt: piped/console input reaching an interactive bash prompt through wsl.exe is not
+rem reliable from a plain "call" like this, whereas cmd's own "choice" is.)
 rem
 rem Usage (from a caller that already did "cd /d %%~dp0" to the project root):
 rem   set "PREP_FLAGS=--dry-run"   (optional, before calling)
-rem   call choose-openshell-version.cmd single   (one version only; no "All" option)
-rem   call choose-openshell-version.cmd multi    (adds "All installed, then compare")
+rem   call .\choose-openshell-version.cmd single   (one version only; no "All" option)
+rem   call .\choose-openshell-version.cmd multi    (adds "All installed, then compare")
 rem
 rem On return:
 rem   PREP_FAILED=1   the user cancelled, or the download/verification failed; caller should stop.

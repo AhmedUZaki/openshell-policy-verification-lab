@@ -125,6 +125,21 @@ ovl_install() {
   ovl_log "OpenShell $v stored in $dir"
 }
 
+# ovl_activate_installed VERSION: like ovl_use, but refuses to download. VERSION must already be
+# in the store (installed via "bash choose-openshell-version.sh" or "choose-openshell-version.cmd",
+# the only place in this lab that downloads a new OpenShell version). Used by
+# run-enforcement-audit.sh and run-tier-network-and-filesystem-checks.sh so that testing a
+# version never silently fetches one.
+ovl_activate_installed() {
+  local v
+  v="$(ovl_normalize "$1")" || return 2
+  if [[ ! -f "$OPENSHELL_VERSION_STORE/$v/.complete" ]]; then
+    ovl_err "OpenShell $v is not installed. Run: bash choose-openshell-version.sh (or choose-openshell-version.cmd) and pick $v first."
+    return 2
+  fi
+  ovl_use "$v"
+}
+
 # ovl_use VERSION: make VERSION the active openshell/openshell-gateway/openshell-sandbox.
 ovl_use() {
   local v dir current state saved unit f name

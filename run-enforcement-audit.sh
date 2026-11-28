@@ -18,36 +18,32 @@ SCOPE=""
 KEEP=0
 DRY_RUN=0
 KEEP_VERSION=0
-CHOOSE_VERSION=0
 ALL_INSTALLED=0
-ALL_AVAILABLE=0
-EARLY_DOWNLOAD=0
 VERSIONS=()
 
 usage() {
   cat <<'EOF'
 Usage: bash run-enforcement-audit.sh [--all|--network-only|--filesystem-only] [--keep] [--dry-run]
                                      [--openshell-version V]... [--openshell-versions V1,V2] [--compare]
-                                     [--choose-version] [--all-installed] [--all-available] [--keep-version]
+                                     [--all-installed] [--keep-version]
 
-When run interactively without a scope option, the runner first asks (Linux/WSL)
-which OpenShell version(s) to test unless a version option was given, then asks
-the user to choose network tests, filesystem tests, or both. Non-interactive jobs must
+When run interactively without a scope option, the runner asks the user to
+choose network tests, filesystem tests, or both. Non-interactive jobs must
 provide an explicit scope option.
 
-OpenShell versions (Linux and WSL only):
+OpenShell versions (Linux and WSL only). This script never downloads a
+version itself: every version named below must already be installed. Run
+"bash choose-openshell-version.sh" (or choose-openshell-version.cmd on
+Windows) first to download and verify one -- it is the only place in this
+lab that fetches a new OpenShell release.
   (none)                     test the OpenShell that is installed now
-  --openshell-version V      test release V (repeat the option to test several)
-  --openshell-versions A,B   same, comma separated
-  --compare                  test the baseline (0.0.116) and candidate (0.1.9) and write audit-reports/enforcement-audit/latest/COMPARISON.md
-  --choose-version           list every OpenShell release available on GitHub right now (a new release appears
-                             automatically) and pick one or more by number or by typing the version
-  --all-installed            test every OpenShell version already installed on this machine (the menu choice "All")
-  --all-available            test EVERY release available on GitHub right now, one after another, and compare them
-                             (many downloads; can take hours)
+  --openshell-version V      test release V (repeat the option to test several); must be installed
+  --openshell-versions A,B   same, comma separated; each must be installed
+  --compare                  test the baseline (0.0.116) and candidate (0.1.9); both must be installed,
+                             and write audit-reports/enforcement-audit/latest/COMPARISON.md
+  --all-installed            test every OpenShell version already installed on this machine
   --keep-version             do not switch back to the original version afterwards
-Each version gets its own run ID (<id>-os<version>) and its own report. Versions
-are downloaded and verified on first use; see setup/4b-install-openshell-versions.sh.
+Each version gets its own run ID (<id>-os<version>) and its own report.
 
 Exit codes:
   0  all measured expectations passed
@@ -88,9 +84,7 @@ while [[ $# -gt 0 ]]; do
     --dry-run) DRY_RUN=1 ;;
     --keep-version) KEEP_VERSION=1 ;;
     --compare) add_versions "$OPENSHELL_BASELINE_VERSION,$OPENSHELL_CANDIDATE_VERSION" ;;
-    --choose-version) CHOOSE_VERSION=1 ;;
     --all-installed) ALL_INSTALLED=1 ;;
-    --all-available) ALL_AVAILABLE=1 ;;
     --openshell-version|--openshell-versions)
       [[ $# -gt 0 ]] || { echo "$arg needs a value, for example: $arg 0.1.9" >&2; exit 2; }
       add_versions "$1"
@@ -104,79 +98,8 @@ done
 # --all-installed: every OpenShell version already stored on this machine (Linux and WSL only).
 if [[ "$ALL_INSTALLED" -eq 1 ]]; then
   ovl_require_linux || exit 2
-  inst_csv="$(ovl_installed_versions)" || { echo 'No OpenShell version is installed yet; install one first (setup/4b-install-openshell-versions.sh install V).' >&2; exit 2; }
+  inst_csv="$(ovl_installed_versions)" || { echo 'No OpenShell version is installed yet. Run: bash choose-openshell-version.sh' >&2; exit 2; }
   add_versions "$inst_csv"
-fi
-
-# --all-available: every release available on GitHub now (Linux and WSL only). The list is read at run time, so a new release is included.
-if [[ "$ALL_AVAILABLE" -eq 1 ]]; then
-  ovl_require_linux || exit 2
-  all_csv="$(ovl_all_versions)" || { echo 'Could not read the release list from GitHub; --all-available needs it.' >&2; exit 2; }
-  add_versions "$all_csv"
-fi
-
-# --choose-version: show the releases available on GitHub now and let the user pick (Linux and WSL only).
-if [[ "$CHOOSE_VERSION" -eq 1 ]]; then
-  ovl_require_linux || exit 2
-  picked="$(ovl_pick_versions)"
-  pick_rc=$?
-  case "$pick_rc" in
-    0) add_versions "$picked"; EARLY_DOWNLOAD=1 ;;
-    3) exit 0 ;;
-    *) echo 'No OpenShell version was chosen.' >&2; exit 2 ;;
-  esac
-fi
-
-# Interactive run without scope or version options: first ask which OpenShell version(s) to test (Linux and WSL
-# only, the only place the runner can switch versions), then the scope. Scripts and CI pass their options and are never asked.
-if [[ -z "$SCOPE" && -t 0 && ${#VERSIONS[@]} -eq 0 && "$(uname -s)" == Linux ]]; then
-  choice=""
-  while [[ -z "$choice" ]]; do
-    printf '\nChoose the OpenShell version to test / اختر إصدار OpenShell:\n'
-    printf '  1) %s\n' "$OPENSHELL_BASELINE_VERSION"
-    printf '  2) %s\n' "$OPENSHELL_CANDIDATE_VERSION"
-    printf '  3) %s\n' "$OPENSHELL_LATEST_KNOWN_VERSION"
-    printf '  4) All: every OpenShell version installed on this machine now, then compare them\n'
-    printf '  5) Another version: list every release available now\n'
-    printf '  Q) Quit / خروج\n'
-    read -r -p 'Selection / الاختيار: ' choice
-    case "$choice" in
-      1) add_versions "$OPENSHELL_BASELINE_VERSION"; EARLY_DOWNLOAD=1 ;;
-      2) add_versions "$OPENSHELL_CANDIDATE_VERSION"; EARLY_DOWNLOAD=1 ;;
-      3) add_versions "$OPENSHELL_LATEST_KNOWN_VERSION"; EARLY_DOWNLOAD=1 ;;
-      4)
-        if inst_csv="$(ovl_installed_versions)"; then
-          echo "\"All\" = the installed versions: ${inst_csv//,/ }"
-          add_versions "$inst_csv"; EARLY_DOWNLOAD=1
-        else
-          echo 'No OpenShell version is installed yet. Choose a version first; it is downloaded and kept, then "All" can use it.' >&2
-          choice=""
-        fi
-        ;;
-      5)
-        picked="$(ovl_pick_versions)"
-        pick_rc=$?
-        case "$pick_rc" in
-          0) add_versions "$picked"; EARLY_DOWNLOAD=1 ;;
-          3) exit 0 ;;   # the picker already printed "Cancelled."
-          *) echo 'No OpenShell version was chosen.' >&2; exit 2 ;;
-        esac
-        ;;
-      q|Q) echo 'Cancelled.'; exit 0 ;;
-      *) echo 'Invalid selection. Enter 1, 2, 3, 4, 5, or Q.' >&2; choice="" ;;
-    esac
-  done
-fi
-
-# A version chosen interactively is downloaded and verified now, before the question about which tests to run.
-# A release that cannot be installed is dropped with a message; the run stops only if none is left.
-if [[ "$EARLY_DOWNLOAD" -eq 1 && ${#VERSIONS[@]} -gt 0 ]]; then
-  ready_versions=()
-  for v in "${VERSIONS[@]}"; do
-    if ovl_install "$v"; then ready_versions+=("$v"); else echo "Skipping $v: it could not be installed." >&2; fi
-  done
-  [[ ${#ready_versions[@]} -gt 0 ]] || { echo 'No OpenShell version could be installed.' >&2; exit 2; }
-  VERSIONS=("${ready_versions[@]}")
 fi
 
 if [[ -z "$SCOPE" ]]; then
@@ -212,7 +135,7 @@ esac
 if [[ "$DRY_RUN" == 1 ]]; then
   echo "Platform: $(uname -s)"
   if [[ ${#VERSIONS[@]} -gt 0 ]]; then
-    echo "Would test OpenShell versions: ${VERSIONS[*]} (each downloaded and verified on first use, original version restored afterwards)"
+    echo "Would test OpenShell versions: ${VERSIONS[*]} (each must already be installed; original version restored afterwards)"
     [[ ${#VERSIONS[@]} -ge 2 ]] && echo 'Would write audit-reports/enforcement-audit/latest/COMPARISON.md, COMPARISON_AR.md and COMPARISON.json'
   fi
   echo 'Would move previous results to archived-results/<previous-run-id>/'
@@ -318,7 +241,7 @@ restore_original_version() {
   if [[ -n "$ORIGINAL_VERSION" && "$(ovl_current)" != "$ORIGINAL_VERSION" ]]; then
     echo "=== Restoring OpenShell $ORIGINAL_VERSION ==="
     cleanup_active_version
-    ovl_use "$ORIGINAL_VERSION" || echo "Warning: could not switch back to OpenShell $ORIGINAL_VERSION; run: bash setup/4b-install-openshell-versions.sh use $ORIGINAL_VERSION" >&2
+    ovl_activate_installed "$ORIGINAL_VERSION" || echo "Warning: could not switch back to OpenShell $ORIGINAL_VERSION; run: bash setup/4b-install-openshell-versions.sh use $ORIGINAL_VERSION" >&2
   fi
 }
 
@@ -337,8 +260,8 @@ for version in "${VERSIONS[@]}"; do
   echo
   echo "################ OpenShell $version ################"
   cleanup_active_version
-  if ! ovl_use "$version"; then
-    echo "Skipping OpenShell $version: it could not be installed or activated." >&2
+  if ! ovl_activate_installed "$version"; then
+    echo "Skipping OpenShell $version: not installed (run choose-openshell-version.sh / .cmd first) or could not be activated." >&2
     FINAL_RC=2
     continue
   fi

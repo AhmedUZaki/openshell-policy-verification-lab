@@ -19,8 +19,9 @@
 #   bash run-tier-network-and-filesystem-checks.sh --live-only          (3 only)
 #   ... --pairs=restricted:pypi,open:wttr   (with --live or --live-only: run only these of the
 #       6 live operations, instead of all of them; see run-live-network-reachability.sh)
-#   ... --openshell-version V   (test OpenShell V instead of whatever is active; downloads and
-#       verifies it first if needed, same as run-enforcement-audit.sh. Linux/WSL only.)
+#   ... --openshell-version V   (test OpenShell V instead of whatever is active; V must already be
+#       installed -- run "bash choose-openshell-version.sh" first. This script never downloads a
+#       version itself. Linux/WSL only.)
 #   ... --keep-version          (with --openshell-version: do not switch back afterwards)
 #
 # Exit codes:
@@ -73,13 +74,13 @@ RESTORE_NEEDED=0
 restore_original_version() {
   if [[ $RESTORE_NEEDED -eq 1 && -n "$ORIGINAL_VERSION" && "$(ovl_current)" != "$ORIGINAL_VERSION" ]]; then
     echo "=== Restoring OpenShell $ORIGINAL_VERSION ==="
-    ovl_use "$ORIGINAL_VERSION" || echo "Warning: could not switch back to OpenShell $ORIGINAL_VERSION; run: bash setup/4b-install-openshell-versions.sh use $ORIGINAL_VERSION" >&2
+    ovl_activate_installed "$ORIGINAL_VERSION" || echo "Warning: could not switch back to OpenShell $ORIGINAL_VERSION; run: bash setup/4b-install-openshell-versions.sh use $ORIGINAL_VERSION" >&2
   fi
 }
 trap restore_original_version EXIT
 
 if [[ -n "$OPENSHELL_VERSION" ]]; then
-  ovl_use "$OPENSHELL_VERSION" || { echo "Could not activate OpenShell $OPENSHELL_VERSION." >&2; exit 2; }
+  ovl_activate_installed "$OPENSHELL_VERSION" || exit 2
 fi
 printf 'OpenShell version under test: %s\n' "$(ovl_current)"
 
