@@ -17,6 +17,8 @@
 #   bash run-tier-network-and-filesystem-checks.sh --monotonicity-only  (1 only)
 #   bash run-tier-network-and-filesystem-checks.sh --invariance-only    (2 only)
 #   bash run-tier-network-and-filesystem-checks.sh --live-only          (3 only)
+#   ... --pairs=restricted:pypi,open:wttr   (with --live or --live-only: run only these of the
+#       6 live operations, instead of all of them; see run-live-network-reachability.sh)
 #
 # Exit codes:
 #   0  every check that ran passed
@@ -28,14 +30,16 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_MONO=1
 RUN_INVARIANCE=1
 RUN_LIVE=0
+PAIRS="all"
 for arg in "$@"; do
   case "$arg" in
     --live) RUN_LIVE=1 ;;
     --monotonicity-only) RUN_MONO=1; RUN_INVARIANCE=0; RUN_LIVE=0 ;;
     --invariance-only) RUN_MONO=0; RUN_INVARIANCE=1; RUN_LIVE=0 ;;
     --live-only) RUN_MONO=0; RUN_INVARIANCE=0; RUN_LIVE=1 ;;
+    --pairs=*) PAIRS="${arg#--pairs=}" ;;
     *)
-      echo "Usage: $0 [--live|--monotonicity-only|--invariance-only|--live-only]" >&2
+      echo "Usage: $0 [--live|--monotonicity-only|--invariance-only|--live-only] [--pairs=tier:dest,...]" >&2
       exit 2
       ;;
   esac
@@ -77,7 +81,7 @@ fi
 
 if [[ $RUN_LIVE -eq 1 ]]; then
   printf '\n########## Live network reachability (real sandboxes + live internet) ##########\n'
-  AUDIT_RUN_ID="$RUN_ID" bash "$ROOT/tests/tier-checks/run-live-network-reachability.sh"
+  AUDIT_RUN_ID="$RUN_ID" bash "$ROOT/tests/tier-checks/run-live-network-reachability.sh" "$PAIRS"
   LIVE_RUN_RC=$?
   if [[ $LIVE_RUN_RC -eq 0 ]]; then
     node "$ROOT/tests/tier-checks/evaluate-live-network-reachability.mjs" "$RUN_ID"

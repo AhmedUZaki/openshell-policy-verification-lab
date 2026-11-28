@@ -10,9 +10,16 @@
 #   - wttr.in    (weather preset): absent from Restricted and Balanced, present only in Open.
 # Both rules are declared as "allow: { method: GET, path: \"/**\" }" in their preset, so a
 # plain GET is the operation actually under test, not a probe-specific workaround.
+#
+# Usage: run-live-network-reachability.sh [PAIRS]
+#   PAIRS: "all" (default), or a comma-separated list of tier:destination pairs to run, e.g.
+#          "restricted:pypi,balanced:wttr". Valid tiers: restricted, balanced, open.
+#          Valid destinations: pypi, wttr. A tier with no selected destination is skipped
+#          entirely (no sandbox is created for it).
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PAIRS_ARG="${1:-all}"
 export PATH="$HOME/.local/bin:$PATH"
 # shellcheck disable=SC1091
 source "$ROOT/tests/shared/gateway-lifecycle.sh"
@@ -36,6 +43,28 @@ TIERS=(restricted balanced open)
 DESTS=(pypi wttr)
 declare -A URL=( [pypi]="https://pypi.org/simple/" [wttr]="https://wttr.in/?format=3" )
 
+declare -A SELECTED
+if [[ "$PAIRS_ARG" == "all" ]]; then
+  for tier in "${TIERS[@]}"; do for dest in "${DESTS[@]}"; do SELECTED["$tier:$dest"]=1; done; done
+else
+  IFS=',' read -r -a pair_list <<<"$PAIRS_ARG"
+  for pair in "${pair_list[@]}"; do
+    [[ -z "$pair" ]] && continue
+    tier="${pair%%:*}"; dest="${pair##*:}"
+    valid_tier=0; for t in "${TIERS[@]}"; do [[ "$t" == "$tier" ]] && valid_tier=1; done
+    valid_dest=0; for d in "${DESTS[@]}"; do [[ "$d" == "$dest" ]] && valid_dest=1; done
+    if [[ $valid_tier -eq 0 || $valid_dest -eq 0 ]]; then
+      echo "Invalid pair '$pair' (expected tier:destination, e.g. restricted:pypi)." >&2
+      exit 2
+    fi
+    SELECTED["$tier:$dest"]=1
+  done
+  if [[ ${#SELECTED[@]} -eq 0 ]]; then
+    echo "No valid pairs given. Usage: $0 [all|tier:dest,tier:dest,...]" >&2
+    exit 2
+  fi
+fi
+
 probe() {
   # probe <sandbox-name> <url> -> "rc=<curl exit code> http=<status>00 body=<first 60 bytes>"
   local name="$1" url="$2"
@@ -47,6 +76,12 @@ echo "[" > "$RAW_JSON"
 first=1
 FAILED_TIERS=()
 for tier in "${TIERS[@]}"; do
+  tier_has_any=0
+  for dest in "${DESTS[@]}"; do [[ -n "${SELECTED[$tier:$dest]:-}" ]] && tier_has_any=1; done
+  if [[ $tier_has_any -eq 0 ]]; then
+    printf '\n=== Tier: %s (no selected destination; skipped) ===\n' "$tier"
+    continue
+  fi
   printf '\n=== Tier: %s ===\n' "$tier"
   name="ft-tnet-$tier"
   policy="$ROOT/policies/tier-checks/filesystem-with-network-tier-$tier.yaml"
@@ -57,6 +92,7 @@ for tier in "${TIERS[@]}"; do
     continue
   fi
   for dest in "${DESTS[@]}"; do
+    [[ -z "${SELECTED[$tier:$dest]:-}" ]] && continue
     raw="$(probe "$name" "${URL[$dest]}")"
     echo "  $dest -> $raw"
     rc="$(printf '%s' "$raw" | grep -oE 'rc=[0-9]+' | cut -d= -f2)"

@@ -1,12 +1,17 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 set "HAS_SCOPE=0"
+set "HAS_PAIRS=0"
 for %%A in (%*) do if /i "%%~A"=="--live" set "HAS_SCOPE=1"
 for %%A in (%*) do if /i "%%~A"=="--monotonicity-only" set "HAS_SCOPE=1"
 for %%A in (%*) do if /i "%%~A"=="--invariance-only" set "HAS_SCOPE=1"
 for %%A in (%*) do if /i "%%~A"=="--live-only" set "HAS_SCOPE=1"
+rem "for %%A in (%*)" splits on "=" too, so --pairs=... must be detected on the whole
+rem argument string instead (findstr), not by re-tokenizing %* word by word.
+echo %*| findstr /C:"--pairs=" >nul
+if not errorlevel 1 set "HAS_PAIRS=1"
 
 where wsl >nul 2>nul
 if errorlevel 1 (
@@ -34,10 +39,58 @@ if "%HAS_SCOPE%"=="0" (
 )
 :scope_selected
 
+rem If the live check will run, let the user pick which of its 6 real operations to run,
+rem unless --pairs= was already given on the command line.
+set "SELECTED_PAIRS="
+set "RUNS_LIVE=0"
+if "%SELECTED_SCOPE%"=="--live" set "RUNS_LIVE=1"
+if "%SELECTED_SCOPE%"=="--live-only" set "RUNS_LIVE=1"
+for %%A in (%*) do if /i "%%~A"=="--live" set "RUNS_LIVE=1"
+for %%A in (%*) do if /i "%%~A"=="--live-only" set "RUNS_LIVE=1"
+if "%RUNS_LIVE%"=="1" if "%HAS_PAIRS%"=="0" (
+  echo.
+  echo Live network reachability makes 6 real requests ^(2 destinations x 3 tiers^). Choose which to run:
+  echo   1. Restricted -^> pypi.org  ^(expected: denied^)
+  echo   2. Restricted -^> wttr.in   ^(expected: denied^)
+  echo   3. Balanced   -^> pypi.org  ^(expected: allowed^)
+  echo   4. Balanced   -^> wttr.in   ^(expected: denied^)
+  echo   5. Open       -^> pypi.org  ^(expected: allowed^)
+  echo   6. Open       -^> wttr.in   ^(expected: allowed^)
+  echo   7. All six
+  set "SEL="
+  set /p "SEL=Enter numbers separated by commas (e.g. 1,3,5), or 7 for all: "
+  if "!SEL!"=="7" (
+    set "SELECTED_PAIRS=all"
+  ) else (
+    set "PAIRLIST=!SEL:,= !"
+    set "BUILD="
+    for %%N in (!PAIRLIST!) do (
+      if "%%N"=="1" set "BUILD=!BUILD!restricted:pypi,"
+      if "%%N"=="2" set "BUILD=!BUILD!restricted:wttr,"
+      if "%%N"=="3" set "BUILD=!BUILD!balanced:pypi,"
+      if "%%N"=="4" set "BUILD=!BUILD!balanced:wttr,"
+      if "%%N"=="5" set "BUILD=!BUILD!open:pypi,"
+      if "%%N"=="6" set "BUILD=!BUILD!open:wttr,"
+    )
+    if "!BUILD!"=="" (
+      echo No valid selection; running all six.
+      set "SELECTED_PAIRS=all"
+    ) else (
+      set "SELECTED_PAIRS=!BUILD!"
+    )
+  )
+)
+
+set "PAIRS_ARG="
+if not "%SELECTED_PAIRS%"=="" set "PAIRS_ARG=--pairs=%SELECTED_PAIRS%"
+
+rem Note for direct command-line use (not the menus above): cmd.exe splits an unquoted
+rem --pairs=a:b,c:d into separate %N parameters at "=", same as it does inside "for (%*)".
+rem Quote it, e.g.: run-tier-network-and-filesystem-checks.cmd nopause --live-only "--pairs=restricted:pypi"
 if /i "%~1"=="nopause" (
-  wsl -d Ubuntu-24.04 bash ./run-tier-network-and-filesystem-checks.sh %SELECTED_SCOPE% %2 %3 %4
+  wsl -d Ubuntu-24.04 bash ./run-tier-network-and-filesystem-checks.sh %SELECTED_SCOPE% %PAIRS_ARG% %2 %3 %4
 ) else (
-  wsl -d Ubuntu-24.04 bash ./run-tier-network-and-filesystem-checks.sh %SELECTED_SCOPE% %*
+  wsl -d Ubuntu-24.04 bash ./run-tier-network-and-filesystem-checks.sh %SELECTED_SCOPE% %PAIRS_ARG% %*
 )
 set "RESULT=%ERRORLEVEL%"
 
