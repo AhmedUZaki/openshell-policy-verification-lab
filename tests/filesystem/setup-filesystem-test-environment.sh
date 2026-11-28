@@ -6,6 +6,10 @@ STATE_DIR="$ROOT/tests/filesystem/.state"
 STATE_FILE="$STATE_DIR/filesystem.env"
 RESTRICTIVE_NAME="ft-fs-restrict"
 PERMISSIVE_NAME="ft-fs-permit"
+# Override for tier-invariance testing (tests/network/run-tier-filesystem-invariance.sh): same
+# filesystem_policy as policies/filesystem-restrictive.yaml, with one NemoClaw tier's
+# network_policies added. Defaults to the unmodified file, so normal runs are unaffected.
+RESTRICTIVE_POLICY="${FS_RESTRICTIVE_POLICY:-$ROOT/policies/filesystem-restrictive.yaml}"
 source "$ROOT/tests/shared/gateway-lifecycle.sh"
 
 export PATH="$HOME/.local/bin:$PATH"
@@ -52,7 +56,7 @@ printf 'Creating the restrictive sandbox...\n'
 openshell sandbox create \
   --name "$RESTRICTIVE_NAME" \
   --from "$FS_IMAGE" \
-  --policy "$ROOT/policies/filesystem-restrictive.yaml" \
+  --policy "$RESTRICTIVE_POLICY" \
   --approval-mode manual \
   --detach
 
