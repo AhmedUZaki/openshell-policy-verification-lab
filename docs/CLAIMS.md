@@ -1,6 +1,6 @@
 # M4 — OpenShell v0.0.116 Security Claims & Tests
 
-**Scope:** 10 core tests (6 network, 4 filesystem); **no agent or model provider**. The runner adds 28 predefined robustness tests (listed below), for 38 result rows in a full run.
+**Scope:** 10 core tests (6 network, 4 filesystem); **no agent or model provider**, except N12 below, which needs one. The runner adds 28 predefined robustness tests (listed below), for 38 result rows in a full run.
 
 ## NVIDIA claims
 
@@ -44,6 +44,8 @@ openshell policy update "$SANDBOX" --remove-endpoint "${HOST_A}:${HOST_A_PORT}" 
 ```
 
 N11 and N12 each use a policy or sandbox that is deliberately *not* the restrictive baseline used by N01–N10, since the finding in each case is specifically about what that baseline's validation or credential-rewrite layer fails to catch. N11 swaps `ft-network`'s policy for the duration of its probe, exactly as N06 does; N12 creates and tears down its own sandbox (`ft-network-n12`), profile, and provider instance within the same `run-network-tests.sh` invocation. Their fixture files live in `policies/` alongside the suite's other policies.
+
+N12 needs `openshell profile import`, which does not exist on the M4 baseline release, `0.0.116` (`error: unrecognized subcommand 'profile'`). On that version N12 reports `INCONCLUSIVE` with the CLI error captured in the run's raw log, and the overall run is correctly `INCOMPLETE` rather than silently skipping or mis-scoring N12. This is the same "no agent or model provider" limitation the Scope line above already states for 0.0.116; it is not a regression.
 
 ## Filesystem tests — F1 Read, F2 Modify, F3 Truncate, F4 Delete
 
