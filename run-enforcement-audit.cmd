@@ -28,13 +28,16 @@ rem The version is downloaded and verified right away, BEFORE the tests are chos
 set "VERSION_ARGS="
 set "PREP_FLAGS="
 if "%DRY_RUN%"=="1" set "PREP_FLAGS=--dry-run"
-set "PREP_FAILED=0"
-if "%HAS_SCOPE%"=="0" if "%VERSIONED%"=="0" call :ask_versions
+if "%HAS_SCOPE%"=="0" if "%VERSIONED%"=="0" call setup\choose-openshell-version.cmd multi
 if "%PREP_FAILED%"=="1" (
   echo.
   echo No OpenShell version was prepared ^(cancelled, or the download failed^). Nothing was run.
   if /i not "%~1"=="nopause" pause
   exit /b 2
+)
+if defined PREPARED (
+  set "VERSION_ARGS=--openshell-versions %PREPARED%"
+  set "VERSIONED=1"
 )
 
 rem Step 2: choose the tests to run.
@@ -77,37 +80,3 @@ if "%DRY_RUN%"=="0" if "%RESULT%"=="2" echo Incomplete: setup, infrastructure, o
 if "%VERSIONED%"=="1" echo Per-version reports: audit-reports\enforcement-audit\latest-by-version\ ^| comparison of two or more versions: audit-reports\enforcement-audit\latest\COMPARISON.md
 if /i not "%~1"=="nopause" pause
 exit /b %RESULT%
-
-:ask_versions
-echo.
-echo Step 1: choose the OpenShell version to test. It is downloaded and verified before you choose the tests.
-echo   1. 0.0.116
-echo   2. 0.1.9
-echo   3. 0.1.10
-echo   4. All: every version installed on this machine now, then compare them
-echo   5. Another version: list every release available now ^(new releases appear automatically^)
-choice /c 12345 /n /m "Selection [1-5]: "
-if errorlevel 5 set "PREP=choose" & goto prepare_versions
-if errorlevel 4 set "PREP=all" & goto prepare_versions
-if errorlevel 3 set "PREP=0.1.10" & goto prepare_versions
-if errorlevel 2 set "PREP=0.1.9" & goto prepare_versions
-set "PREP=0.0.116"
-
-:prepare_versions
-rem "prepare" downloads and verifies the selection. It runs as a normal command (not inside "for /f") so the console input
-rem reaches its prompts; it hands the result over in a small file: the versions that are ready, e.g. 0.1.10,0.1.7
-set "PREP_OUT=.prepared-versions.tmp"
-if exist "%PREP_OUT%" del "%PREP_OUT%"
-wsl -d Ubuntu-24.04 bash ./setup/4b-install-openshell-versions.sh prepare %PREP_FLAGS% --out ./%PREP_OUT% %PREP%
-set "PREPARED="
-if exist "%PREP_OUT%" set /p PREPARED=<"%PREP_OUT%"
-if exist "%PREP_OUT%" del "%PREP_OUT%"
-if not defined PREPARED (
-  set "PREP_FAILED=1"
-  exit /b 1
-)
-echo.
-echo Ready: %PREPARED%
-set "VERSION_ARGS=--openshell-versions %PREPARED%"
-set "VERSIONED=1"
-exit /b 0
