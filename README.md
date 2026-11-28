@@ -104,7 +104,7 @@ bash setup/4b-install-openshell-versions.sh prepare choose          # pick, down
 2. *Choose the tests.* Both, network only, or filesystem only.
 3. The tests run on each chosen version, and two or more versions are compared.
 
-Windows without the menu: `run-enforcement-audit.cmd nopause --all --compare`. Each version is downloaded and checked against its published SHA-256 list on first use (or ahead of time with `setup/4b-install-openshell-versions.sh`), gets its own run ID (`<id>-os<version>`) and its own signed evidence, and the version originally installed is restored afterwards (`--keep-version` skips that). The reports record the OpenShell version they measured; `audit-reports/latest/COMPARISON.md` shows which tests changed between versions and checks the written predictions in `docs/upstream-analysis/truncation-F3_1-F3_3.md`.
+Windows without the menu: `run-enforcement-audit.cmd nopause --all --compare`. Each version is downloaded and checked against its published SHA-256 list on first use (or ahead of time with `setup/4b-install-openshell-versions.sh`), gets its own run ID (`<id>-os<version>`) and its own signed evidence, and the version originally installed is restored afterwards (`--keep-version` skips that). The reports record the OpenShell version they measured; `audit-reports/enforcement-audit/latest/COMPARISON.md` shows which tests changed between versions and checks the written predictions in `docs/upstream-analysis/truncation-F3_1-F3_3.md`.
 
 On OpenShell 0.1.x the network suite needs temporary gateway settings that the lab writes to `~/.config/openshell/` and removes again (see `setup/README.md`, section "Network tests on OpenShell 0.1.x"), and Docker Desktop needs host networking enabled. The test scripts were written against OpenShell 0.0.116. A newer release may change command-line options, policy schema, or gateway behavior; such a break is reported as `INCOMPLETE` (exit code 2), not as a pass or a failure of the enforcement claim. Switching versions keeps a separate gateway state per version and is not available on macOS. OpenShell 0.1.10 is the latest stable release as of 2026-11-26. The lab's filesystem suite (26 tests) was run on it that day: 20 PASS, 1 FAIL (F3_3), 1 EXPECTED, 4 LANDLOCK-LIMITATION, 0 INCONCLUSIVE; the network suite was not run on it (see `docs/VERSIONS.md`).
 
@@ -113,12 +113,12 @@ On OpenShell 0.1.x the network suite needs temporary gateway settings that the l
 The runner gives every invocation one audit run ID. The analyzer accepts only reports carrying that exact ID, checks every expected test in the selected scope, and writes:
 
 ```text
-audit-reports/latest/LATEST.md
-audit-reports/latest/LATEST_AR.md
-audit-reports/latest/LATEST.json
-audit-reports/run-history/<run-id>/   (analysis.md, analysis_AR.md, analysis.json for that run)
-audit-reports/latest-by-version/<openshell-version>/LATEST.*   (latest report of each OpenShell version)
-audit-reports/latest/COMPARISON.md, COMPARISON_AR.md, COMPARISON.json   (written when two or more versions were run)
+audit-reports/enforcement-audit/latest/LATEST.md
+audit-reports/enforcement-audit/latest/LATEST_AR.md
+audit-reports/enforcement-audit/latest/LATEST.json
+audit-reports/enforcement-audit/run-history/<run-id>/   (analysis.md, analysis_AR.md, analysis.json for that run)
+audit-reports/enforcement-audit/latest-by-version/<openshell-version>/LATEST.*   (latest report of each OpenShell version)
+audit-reports/enforcement-audit/latest/COMPARISON.md, COMPARISON_AR.md, COMPARISON.json   (written when two or more versions were run)
 ```
 
 Each report starts with a status summary and a "Needs attention" list, then separate Network and Filesystem tables with a short description for every test.

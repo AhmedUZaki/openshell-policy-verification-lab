@@ -1,9 +1,9 @@
 // Compares test results between OpenShell versions and writes
-// audit-reports/latest/COMPARISON.md, COMPARISON_AR.md and COMPARISON.json.
+// audit-reports/enforcement-audit/latest/COMPARISON.md, COMPARISON_AR.md and COMPARISON.json.
 //
 // It only re-presents statuses that the analyzer already measured (it never rewrites one).
 // Usage:
-//   node tests/compare-versions.mjs                  every run in audit-reports/run-history
+//   node tests/compare-versions.mjs                  every run in audit-reports/enforcement-audit/run-history
 //   node tests/compare-versions.mjs --include-archive  also runs moved to archived-results/
 //   node tests/compare-versions.mjs --run-id A --run-id B   only these runs
 import fs from "node:fs";
@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { testNames } from "./test-names.mjs";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const outputDir = path.join(root, "audit-reports");
+const outputDir = path.join(root, "audit-reports", "enforcement-audit");
 const argv = process.argv.slice(2);
 const includeArchive = argv.includes("--include-archive");
 const wantedRunIds = [];
@@ -163,4 +163,4 @@ for (const [name, content] of [["COMPARISON.md", render(false)], ["COMPARISON_AR
   fs.writeFileSync(path.join(latestDir, name), content, "utf8");
 }
 console.log(render(false));
-console.log("Comparison files: audit-reports/latest/COMPARISON.md, COMPARISON_AR.md, and COMPARISON.json");
+console.log("Comparison files: audit-reports/enforcement-audit/latest/COMPARISON.md, COMPARISON_AR.md, and COMPARISON.json");

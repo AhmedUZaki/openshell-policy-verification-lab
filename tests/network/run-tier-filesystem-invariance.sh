@@ -2,7 +2,7 @@
 # docs/CLAIMS.md's other metamorphic relation: "filesystem invariance only with identical
 # filesystem policies." Runs the existing F1-F4 filesystem suite three times, once per NemoClaw
 # tier (restricted, balanced, open); each run uses the SAME filesystem_policy
-# (policies/filesystem-restrictive.yaml, byte-for-byte) with only that tier's network_policies
+# (policies/enforcement-audit/filesystem-restrictive.yaml, byte-for-byte) with only that tier's network_policies
 # added, so any difference in F1-F4 results across the three runs is a real finding, not an
 # artifact of a different filesystem policy.
 set -uo pipefail
@@ -24,7 +24,7 @@ declare -A RUN_EXIT
 for tier in "${TIERS[@]}"; do
   printf '\n=== Tier: %s ===\n' "$tier"
   # Committed, not a throwaway state file: see tests/network/nemoclaw-tiers/SOURCE.md.
-  policy_file="$ROOT/policies/filesystem-with-network-tier-$tier.yaml"
+  policy_file="$ROOT/policies/tier-checks/filesystem-with-network-tier-$tier.yaml"
   node "$ROOT/tests/network/nemoclaw-tiers/compose-tier-filesystem-policy.mjs" "$tier" "$policy_file"
 
   run_id="$STAMP_BASE-tier-$tier"

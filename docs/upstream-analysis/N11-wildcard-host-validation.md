@@ -71,7 +71,7 @@ The N11 block in `tests/network/run-network-tests.sh` runs this automatically as
 ```bash
 bash tests/network/setup-local-test-servers.sh
 bash tests/network/create-network-test-sandbox.sh
-openshell policy set ft-network --policy policies/network-n11-wildcard-policy.yaml --wait
+openshell policy set ft-network --policy policies/enforcement-audit/network-n11-wildcard-policy.yaml --wait
 openshell sandbox exec --name ft-network --no-tty --timeout 15 -- \
   curl -k -sS -i --max-time 10 https://www.example.com/public
 # revert immediately:

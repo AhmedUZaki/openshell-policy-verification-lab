@@ -71,10 +71,10 @@ set "RESULT=%ERRORLEVEL%"
 echo.
 if "%DRY_RUN%"=="1" if "%RESULT%"=="0" echo Dry run completed: no tests were executed and no results were written.
 if "%DRY_RUN%"=="0" if "%RESULT%"=="0" echo Completed: all measured expectations passed.
-if "%DRY_RUN%"=="0" if "%RESULT%"=="1" echo Completed: at least one measured expectation failed. Review audit-reports\latest\LATEST.md.
+if "%DRY_RUN%"=="0" if "%RESULT%"=="1" echo Completed: at least one measured expectation failed. Review audit-reports\enforcement-audit\latest\LATEST.md.
 if "%DRY_RUN%"=="0" if "%RESULT%"=="2" echo Incomplete: setup, infrastructure, or inconclusive result. Review the output above.
 
-if "%VERSIONED%"=="1" echo Per-version reports: audit-reports\latest-by-version\ ^| comparison of two or more versions: audit-reports\latest\COMPARISON.md
+if "%VERSIONED%"=="1" echo Per-version reports: audit-reports\enforcement-audit\latest-by-version\ ^| comparison of two or more versions: audit-reports\enforcement-audit\latest\COMPARISON.md
 if /i not "%~1"=="nopause" pause
 exit /b %RESULT%
 

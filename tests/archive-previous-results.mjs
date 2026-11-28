@@ -17,7 +17,7 @@ const sources = [
   ["tests/network/results", "network"],
   ["tests/filesystem/results", "filesystem"],
   ["evidence-attestations", "evidence-attestations"],
-  ["audit-reports", "analysis"],
+  ["audit-reports/enforcement-audit", "analysis"],
 ];
 
 function runIdFromReport(file) {
@@ -39,7 +39,7 @@ for (const [dir, target] of sources) {
   for (const entry of fs.readdirSync(base, { withFileTypes: true })) {
     if (entry.name === ".gitkeep") continue;
     const full = path.join(base, entry.name);
-    if (dir === "audit-reports" && entry.isDirectory() && entry.name === "run-history") {
+    if (dir === "audit-reports/enforcement-audit" && entry.isDirectory() && entry.name === "run-history") {
       for (const run of fs.readdirSync(full, { withFileTypes: true })) {
         const runPath = path.join(full, run.name);
         if (!run.isDirectory()) {
@@ -52,14 +52,14 @@ for (const [dir, target] of sources) {
       }
       continue;
     }
-    if (dir === "audit-reports" && entry.isDirectory() && entry.name === "latest") {
+    if (dir === "audit-reports/enforcement-audit" && entry.isDirectory() && entry.name === "latest") {
       for (const file of fs.readdirSync(full)) {
         const filePath = path.join(full, file);
         moves.push({ from: filePath, id: runIdFromReport(filePath), target: `${target}/latest`, name: file });
       }
       continue;
     }
-    if (dir === "audit-reports" && entry.isDirectory() && entry.name === "latest-by-version") {
+    if (dir === "audit-reports/enforcement-audit" && entry.isDirectory() && entry.name === "latest-by-version") {
       for (const version of fs.readdirSync(full, { withFileTypes: true })) {
         if (!version.isDirectory()) {
           moves.push({ from: path.join(full, version.name), id: null, target, name: version.name });
@@ -73,7 +73,7 @@ for (const [dir, target] of sources) {
       continue;
     }
     let id = entry.isFile() ? entry.name.match(RUN_FILE)?.[1] ?? null : null;
-    if (!id && dir === "audit-reports" && entry.isFile()) id = runIdFromReport(full);
+    if (!id && dir === "audit-reports/enforcement-audit" && entry.isFile()) id = runIdFromReport(full);
     moves.push({ from: full, id, target, name: entry.name });
   }
 }
@@ -108,7 +108,7 @@ for (const item of moves) {
 if (!dryRun) {
   // Drop now-empty run-history/<id> folders; rmdir refuses to remove anything that still holds files.
   for (const group of ["run-history", "latest-by-version", "latest"]) {
-    const groupDir = path.join(root, "audit-reports", group);
+    const groupDir = path.join(root, "audit-reports", "enforcement-audit", group);
     if (!fs.existsSync(groupDir)) continue;
     for (const name of fs.readdirSync(groupDir)) {
       try { fs.rmdirSync(path.join(groupDir, name)); } catch { /* not empty: leave it */ }

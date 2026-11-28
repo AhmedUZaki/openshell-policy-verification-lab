@@ -251,7 +251,7 @@ else
   openshell sandbox exec --name "$NAME" --no-tty --timeout 10 -- sh -c 'pid=$(cat /tmp/t06-stream.pid 2>/dev/null || true); [ -n "$pid" ] && kill "$pid" 2>/dev/null || true' >/dev/null 2>&1 || true
 fi
 
-WILDCARD_POLICY="$ROOT/policies/network-n11-wildcard-policy.yaml"
+WILDCARD_POLICY="$ROOT/policies/enforcement-audit/network-n11-wildcard-policy.yaml"
 N11_SET_OUTPUT="$(openshell policy set "$NAME" --policy "$WILDCARD_POLICY" --wait 2>&1)"
 N11_SET_RC=$?
 {
@@ -272,8 +272,8 @@ else
 fi
 
 N12_SANDBOX="${NAME}-n12"
-N12_PROFILE="$ROOT/policies/network-n12-provider-profile.yaml"
-N12_BASE_POLICY="$ROOT/policies/network-n12-base-policy.yaml"
+N12_PROFILE="$ROOT/policies/enforcement-audit/network-n12-provider-profile.yaml"
+N12_BASE_POLICY="$ROOT/policies/enforcement-audit/network-n12-base-policy.yaml"
 N12_PROVIDER="testprov-$STAMP"
 N12_SECRET="SECRET-$STAMP"
 N12_INFRA=0

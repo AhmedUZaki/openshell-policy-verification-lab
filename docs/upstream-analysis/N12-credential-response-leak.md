@@ -48,12 +48,12 @@ The N12 block in `tests/network/run-network-tests.sh` runs this automatically (o
 ```bash
 bash tests/network/setup-local-test-servers.sh        # origin.py serves /echo too
 
-openshell profile import -f policies/network-n12-provider-profile.yaml
+openshell profile import -f policies/enforcement-audit/network-n12-provider-profile.yaml
 openshell provider create --name testprov --type local-test-api --credential API_TOKEN=SECRET-VALUE-12345
 
 openshell sandbox create --name ft-network-n12 \
   --from openshell-policy-verification/network-test-sandbox:local \
-  --policy policies/network-n12-base-policy.yaml \
+  --policy policies/enforcement-audit/network-n12-base-policy.yaml \
   --approval-mode manual \
   --env "HOST_A=host.openshell.internal" --env "HOST_A_PORT=443" \
   --provider testprov --detach

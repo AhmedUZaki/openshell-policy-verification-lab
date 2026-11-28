@@ -47,7 +47,7 @@ const lines = [
   "# Filesystem tier invariance",
   "",
   `- Overall: \`${overall}\``,
-  `- Same filesystem_policy (policies/filesystem-restrictive.yaml) used in all three runs; only network_policies differed.`,
+  `- Same filesystem_policy (policies/enforcement-audit/filesystem-restrictive.yaml) used in all three runs; only network_policies differed.`,
   ...TIERS.map(([tier, runId]) => `- ${tier} run: \`${runId}\``),
   "",
   "## F1-F4 status by tier",
@@ -61,7 +61,7 @@ const lines = [
     : "No violations: every F1-F4 test produced the identical status under all three network tiers.\n",
 ].join("\n");
 
-const outDir = path.join(root, "audit-reports", "latest");
+const outDir = path.join(root, "audit-reports", "tier-checks", "filesystem-invariance");
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, "TIER-FS-INVARIANCE.md"), lines, "utf8");
 fs.writeFileSync(

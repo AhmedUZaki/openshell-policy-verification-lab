@@ -94,7 +94,7 @@ const lines = [
     : "No violations: every destination allowed under a narrower tier remains allowed under each wider tier.\n",
 ].join("\n");
 
-const outDir = path.join(root, "audit-reports", "latest");
+const outDir = path.join(root, "audit-reports", "tier-checks", "network-monotonicity");
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, "TIER-MONOTONICITY.md"), lines, "utf8");
 fs.writeFileSync(

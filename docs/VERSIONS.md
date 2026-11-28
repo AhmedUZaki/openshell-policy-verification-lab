@@ -4,7 +4,7 @@ This table records the reference environment used while developing the lab. It i
 
 ## OpenShell versions under comparison
 
-The component table further down is the **reference** environment. The lab can also run other OpenShell releases (`--openshell-version`, `--openshell-versions`, `--compare`; see `README.md`). Every report records the OpenShell version it measured, and `audit-reports/latest/COMPARISON.md` lines the versions up.
+The component table further down is the **reference** environment. The lab can also run other OpenShell releases (`--openshell-version`, `--openshell-versions`, `--compare`; see `README.md`). Every report records the OpenShell version it measured, and `audit-reports/enforcement-audit/latest/COMPARISON.md` lines the versions up.
 
 | Role | OpenShell | Status |
 |---|---|---|

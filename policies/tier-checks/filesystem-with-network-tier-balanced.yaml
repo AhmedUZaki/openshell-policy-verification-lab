@@ -1,6 +1,6 @@
 # GENERATED FILE -- do not edit by hand.
-# Regenerate with: node tests/network/nemoclaw-tiers/compose-tier-filesystem-policy.mjs balanced policies/filesystem-with-network-tier-balanced.yaml
-# Source: policies/filesystem-restrictive.yaml (filesystem_policy/landlock/process) plus this
+# Regenerate with: node tests/network/nemoclaw-tiers/compose-tier-filesystem-policy.mjs balanced policies/tier-checks/filesystem-with-network-tier-balanced.yaml
+# Source: policies/enforcement-audit/filesystem-restrictive.yaml (filesystem_policy/landlock/process) plus this
 # tier's static presets from tests/network/nemoclaw-tiers/ (NemoClaw v0.0.140, commit 88fe14f3).
 version: 1
 

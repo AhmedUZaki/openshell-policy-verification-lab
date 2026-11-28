@@ -52,7 +52,7 @@ fi
 openshell sandbox create \
   --name "$NAME" \
   --from "$SANDBOX_SOURCE" \
-  --policy "$ROOT/policies/network-deny-all-base-policy.yaml" \
+  --policy "$ROOT/policies/enforcement-audit/network-deny-all-base-policy.yaml" \
   --approval-mode manual \
   --env "HOST_A=$HOST_A" \
   --env "HOST_A_PORT=$HOST_A_PORT" \

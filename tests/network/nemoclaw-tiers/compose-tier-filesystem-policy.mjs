@@ -1,4 +1,4 @@
-// Composes a filesystem-invariance test policy: policies/filesystem-restrictive.yaml's
+// Composes a filesystem-invariance test policy: policies/enforcement-audit/filesystem-restrictive.yaml's
 // filesystem_policy/landlock/process (UNCHANGED) plus one NemoClaw tier's network_policies.
 // Used by tests/network/run-tier-filesystem-invariance.sh to verify docs/CLAIMS.md's other
 // metamorphic relation: "filesystem invariance only with identical filesystem policies" --
@@ -27,10 +27,10 @@ if (!tier) {
   process.exit(2);
 }
 
-const basePolicy = fs.readFileSync(path.join(root, "policies", "filesystem-restrictive.yaml"), "utf8");
+const basePolicy = fs.readFileSync(path.join(root, "policies", "enforcement-audit", "filesystem-restrictive.yaml"), "utf8");
 const marker = "network_policies: {}";
 if (!basePolicy.includes(marker)) {
-  console.error(`policies/filesystem-restrictive.yaml no longer contains "${marker}"; update this composer.`);
+  console.error(`policies/enforcement-audit/filesystem-restrictive.yaml no longer contains "${marker}"; update this composer.`);
   process.exit(2);
 }
 const block = networkPoliciesBlock(tier.presets);
@@ -38,7 +38,7 @@ const composed = basePolicy.replace(marker, block ? `network_policies:\n${block}
 const header = [
   "# GENERATED FILE -- do not edit by hand.",
   `# Regenerate with: node tests/network/nemoclaw-tiers/compose-tier-filesystem-policy.mjs ${tierName} ${path.relative(root, outFile).replaceAll("\\", "/")}`,
-  "# Source: policies/filesystem-restrictive.yaml (filesystem_policy/landlock/process) plus this",
+  "# Source: policies/enforcement-audit/filesystem-restrictive.yaml (filesystem_policy/landlock/process) plus this",
   `# tier's static presets from tests/network/nemoclaw-tiers/ (NemoClaw v0.0.140, commit 88fe14f3).`,
   "",
 ].join("\n");
