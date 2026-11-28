@@ -7,6 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { archiveExistingReport } from "./archive-previous-report.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.dirname(path.dirname(here));
@@ -64,12 +65,32 @@ const violations = evaluated.filter((r) => r.match === false);
 const authenticityFailures = evaluated.filter((r) => r.authentic === false);
 const overall = violations.length || authenticityFailures.length ? "FAIL" : "PASS";
 
+// Same definitions as tests/enforcement-audit/analyze-results.mjs ("M4 evaluation" in
+// docs/CLAIMS.md). "Prohibited" rows are the ones this tier's real preset should deny; a valid
+// attempt is one that verifiably reached enforcement (a real ALLOWED/DENIED read, not an
+// unauthenticated reach); a confirmed bypass is a prohibited row that measured ALLOWED.
+const coverage = evaluated.length ? evaluated.filter((r) => r.expected !== null).length / evaluated.length : null;
+const prohibited = evaluated.filter((r) => r.expected === "DENIED");
+const validProhibited = prohibited.filter((r) => (r.measured === "ALLOWED" || r.measured === "DENIED") && r.authentic !== false);
+const bypasses = validProhibited.filter((r) => r.measured === "ALLOWED");
+const bypassRate = validProhibited.length ? bypasses.length / validProhibited.length : null;
+const pct = (rate) => (rate === null ? "N/A" : `${(rate * 100).toFixed(1)}%`);
+
 const lines = [
   "# Live network tier-reachability proof",
   "",
   `- Overall: \`${overall}\``,
   `- Source file: \`${path.relative(root, file).replaceAll("\\", "/")}\``,
   "- Each row is a real, read-only GET from inside an OpenShell sandbox running that tier's committed policy (policies/tier-checks/).",
+  "",
+  "## Metrics",
+  "",
+  "- `Coverage = Operations with a Valid Attempt / Total Targeted Operations`",
+  "- `Bypass Rate(tier) = Confirmed Bypasses in Tier / Valid Attempts Reaching Enforcement in Tier`",
+  "",
+  "- Definitions are in `docs/CLAIMS.md` (\"M4 evaluation\").",
+  `- **Valid-Test Coverage:** ${evaluated.filter((r) => r.expected !== null).length} / ${evaluated.length} (${pct(coverage)})`,
+  `- **Bypass Rate:** ${bypasses.length} / ${validProhibited.length} (${pct(bypassRate)})`,
   "",
   "## Results",
   "",
@@ -87,10 +108,11 @@ const lines = [
 
 const outDir = path.join(root, "audit-reports", "tier-checks", "live-network-reachability");
 fs.mkdirSync(outDir, { recursive: true });
+archiveExistingReport(outDir, ["LIVE-NETWORK-REACHABILITY.md", "LIVE-NETWORK-REACHABILITY.json"]);
 fs.writeFileSync(path.join(outDir, "LIVE-NETWORK-REACHABILITY.md"), lines, "utf8");
 fs.writeFileSync(
   path.join(outDir, "LIVE-NETWORK-REACHABILITY.json"),
-  JSON.stringify({ overall, source: path.relative(root, file), rows: evaluated }, null, 2) + "\n",
+  JSON.stringify({ overall, source: path.relative(root, file), rows: evaluated, metrics: { valid_test_coverage: { valid_attempts: evaluated.filter((r) => r.expected !== null).length, expected: evaluated.length, rate: coverage }, bypass_rate: { bypasses: bypasses.length, valid_prohibited_attempts: validProhibited.length, rate: bypassRate } } }, null, 2) + "\n",
   "utf8",
 );
 console.log(lines);

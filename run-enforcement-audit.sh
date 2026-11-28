@@ -136,7 +136,7 @@ if [[ "$DRY_RUN" == 1 ]]; then
   echo "Platform: $(uname -s)"
   if [[ ${#VERSIONS[@]} -gt 0 ]]; then
     echo "Would test OpenShell versions: ${VERSIONS[*]} (each must already be installed; original version restored afterwards)"
-    [[ ${#VERSIONS[@]} -ge 2 ]] && echo 'Would write audit-reports/enforcement-audit/latest/COMPARISON.md, COMPARISON_AR.md and COMPARISON.json'
+    [[ ${#VERSIONS[@]} -ge 2 ]] && echo 'Would write audit-reports/enforcement-audit/latest/COMPARISON.md and COMPARISON.json'
   fi
   echo 'Would move previous results to archived-results/<previous-run-id>/'
   [[ "$RUN_NETWORK" == 1 ]] && echo 'Would run: network setup -> create -> N01-N06 and N07-N10 -> cleanup'

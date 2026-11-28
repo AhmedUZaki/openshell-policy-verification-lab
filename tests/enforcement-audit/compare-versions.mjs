@@ -1,5 +1,5 @@
 // Compares test results between OpenShell versions and writes
-// audit-reports/enforcement-audit/latest/COMPARISON.md, COMPARISON_AR.md and COMPARISON.json.
+// audit-reports/enforcement-audit/latest/COMPARISON.md and COMPARISON.json.
 //
 // It only re-presents statuses that the analyzer already measured (it never rewrites one).
 // Usage:
@@ -159,8 +159,8 @@ const json = JSON.stringify({
 
 const latestDir = path.join(outputDir, "latest");
 fs.mkdirSync(latestDir, { recursive: true });
-for (const [name, content] of [["COMPARISON.md", render(false)], ["COMPARISON_AR.md", render(true)], ["COMPARISON.json", json]]) {
+for (const [name, content] of [["COMPARISON.md", render(false)], ["COMPARISON.json", json]]) {
   fs.writeFileSync(path.join(latestDir, name), content, "utf8");
 }
 console.log(render(false));
-console.log("Comparison files: audit-reports/enforcement-audit/latest/COMPARISON.md, COMPARISON_AR.md, and COMPARISON.json");
+console.log("Comparison files: audit-reports/enforcement-audit/latest/COMPARISON.md and COMPARISON.json");

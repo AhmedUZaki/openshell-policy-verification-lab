@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { archiveExistingReport } from "./archive-previous-report.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.dirname(path.dirname(here));
@@ -35,6 +36,23 @@ function readResults(runId) {
 const resultsByTier = Object.fromEntries(TIERS.map(([tier, runId]) => [tier, readResults(runId)]));
 const allIds = [...new Set(TIERS.flatMap(([tier]) => Object.keys(resultsByTier[tier])))].sort();
 
+// Same definitions as tests/enforcement-audit/analyze-results.mjs ("M4 evaluation" in
+// docs/CLAIMS.md), applied per tier to that tier's own F1-F4 run.
+const CONCLUSIVE_STATUSES = ["PASS", "FAIL", "EXPECTED", "LANDLOCK-LIMITATION"];
+const ALLOWED_BY_DESIGN_IDS = new Set(["F2_11", "F2_17"]);
+function metricsFor(results) {
+  const ids = Object.keys(results);
+  const validAttempts = ids.filter((id) => CONCLUSIVE_STATUSES.includes(results[id].status));
+  const coverage = ids.length ? validAttempts.length / ids.length : null;
+  const prohibited = ids.filter((id) => !ALLOWED_BY_DESIGN_IDS.has(id));
+  const validProhibited = prohibited.filter((id) => ["PASS", "FAIL", "LANDLOCK-LIMITATION"].includes(results[id].status));
+  const bypasses = prohibited.filter((id) => results[id].status === "FAIL");
+  const bypassRate = validProhibited.length ? bypasses.length / validProhibited.length : null;
+  return { validAttempts: validAttempts.length, expected: ids.length, coverage, bypasses: bypasses.length, validProhibited: validProhibited.length, bypassRate };
+}
+const metricsByTier = Object.fromEntries(TIERS.map(([tier]) => [tier, metricsFor(resultsByTier[tier])]));
+const pct = (rate) => (rate === null ? "N/A" : `${(rate * 100).toFixed(1)}%`);
+
 const rows = allIds.map((id) => {
   const statuses = TIERS.map(([tier]) => resultsByTier[tier][id]?.status ?? "MISSING");
   const invariant = statuses.every((s) => s === statuses[0]);
@@ -56,6 +74,20 @@ const lines = [
   "|---|---|---|---|---|",
   ...rows.map((r) => `| ${r.id} | ${r.statuses[0]} | ${r.statuses[1]} | ${r.statuses[2]} | ${r.invariant ? "yes" : "**NO**"} |`),
   "",
+  "## Metrics per tier",
+  "",
+  "- `Coverage = Operations with a Valid Attempt / Total Targeted Operations`",
+  "- `Bypass Rate(tier) = Confirmed Bypasses in Tier / Valid Attempts Reaching Enforcement in Tier`",
+  "",
+  "- Definitions are in `docs/CLAIMS.md` (\"M4 evaluation\"), computed here from each tier's own F1-F4 run.",
+  "",
+  "| Tier | Valid-Test Coverage | Bypass Rate |",
+  "|---|---|---|",
+  ...TIERS.map(([tier]) => {
+    const m = metricsByTier[tier];
+    return `| ${tier} | ${m.validAttempts} / ${m.expected} (${pct(m.coverage)}) | ${m.bypasses} / ${m.validProhibited} (${pct(m.bypassRate)}) |`;
+  }),
+  "",
   violations.length
     ? `## Violations\n\n${violations.map((v) => `- **${v.id}**: restricted=${v.statuses[0]}, balanced=${v.statuses[1]}, open=${v.statuses[2]} -- the network tier changed a filesystem-enforcement outcome.`).join("\n")}\n`
     : "No violations: every F1-F4 test produced the identical status under all three network tiers.\n",
@@ -63,10 +95,11 @@ const lines = [
 
 const outDir = path.join(root, "audit-reports", "tier-checks", "filesystem-invariance");
 fs.mkdirSync(outDir, { recursive: true });
+archiveExistingReport(outDir, ["TIER-FS-INVARIANCE.md", "TIER-FS-INVARIANCE.json"]);
 fs.writeFileSync(path.join(outDir, "TIER-FS-INVARIANCE.md"), lines, "utf8");
 fs.writeFileSync(
   path.join(outDir, "TIER-FS-INVARIANCE.json"),
-  JSON.stringify({ overall, runs: Object.fromEntries(TIERS), rows }, null, 2) + "\n",
+  JSON.stringify({ overall, runs: Object.fromEntries(TIERS), rows, metrics_by_tier: metricsByTier }, null, 2) + "\n",
   "utf8",
 );
 console.log(lines);

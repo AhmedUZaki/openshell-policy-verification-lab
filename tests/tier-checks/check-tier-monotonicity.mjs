@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import {
   DYNAMIC_PRESETS, buildTierMap, extractEndpoints, loadTiers, presetsDir,
 } from "./nemoclaw-tiers/tier-lib.mjs";
+import { archiveExistingReport } from "./archive-previous-report.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.dirname(path.dirname(here));
@@ -96,6 +97,7 @@ const lines = [
 
 const outDir = path.join(root, "audit-reports", "tier-checks", "network-monotonicity");
 fs.mkdirSync(outDir, { recursive: true });
+archiveExistingReport(outDir, ["TIER-MONOTONICITY.md", "TIER-MONOTONICITY.json"]);
 fs.writeFileSync(path.join(outDir, "TIER-MONOTONICITY.md"), lines, "utf8");
 fs.writeFileSync(
   path.join(outDir, "TIER-MONOTONICITY.json"),

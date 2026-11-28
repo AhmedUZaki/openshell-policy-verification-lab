@@ -295,6 +295,9 @@ function metricsSection(ar) {
   return [
     ar ? "## المقاييس" : "## Metrics",
     "",
+    "- `Coverage = Operations with a Valid Attempt / Total Targeted Operations`",
+    "- `Bypass Rate(tier) = Confirmed Bypasses in Tier / Valid Attempts Reaching Enforcement in Tier`",
+    "",
     coverageLine,
     overallLine,
     "",
@@ -394,49 +397,6 @@ const markdown = [
   "",
 ].join("\n");
 
-const arabicOverall = {
-  PASS: "كل التوقعات نجحت",
-  PASS_WITH_LIMITATIONS: "نجحت توقعات الإنفاذ، مع وجود قيود موثقة ظاهرة بوضوح",
-  MEASURED_FAILURE: "يوجد فشل مقاس في أحد توقعات الاختبار",
-  INCOMPLETE: "النتائج ناقصة أو غير حاسمة",
-}[overall];
-const markdownAr = [
-  "# التحليل الآلي لنتائج الإنفاذ",
-  "",
-  `- وقت الإنشاء: \`${payload.generated_at}\``,
-  `- النتيجة العامة: \`${overall}\` — ${arabicOverall}`,
-  `- النطاق: \`${scope}\``,
-  `- إصدار OpenShell: \`${openshellVersion ?? "غير معروف"}\`${openshellVersionSource === "evidence" ? "" : ` (${openshellVersionSource === "unknown" ? "غير معروف" : "مطلوب، ولا توجد أدلة"})`}`,
-  `- معرّف التشغيل: \`${selectedRunId ?? "غير موجود"}\``,
-  `- المنصة: \`${payload.platform.os} ${payload.platform.arch} ${payload.platform.release}\``,
-  `- مصدر الشبكة: \`${payload.sources.network ?? "غير موجود"}\``,
-  `- مصدر الملفات: \`${payload.sources.filesystem ?? "غير موجود"}\``,
-  `- توقيع الأدلة: \`${attestation.verified ? "VERIFIED" : "NOT VERIFIED"}\``,
-  `- بصمة مفتاح التوقيع: \`${attestation.fingerprint ?? "غير موجودة"}\``,
-  "",
-  ...summarySection(true),
-  ...metricsSection(true),
-  ...resultTables(true),
-  "## الاستنتاج الآلي",
-  "",
-  ...(scope !== "filesystem" ? [[ ...networkIds ].every((id) => ["PASS", "EXPECTED"].includes(results[id]?.status))
-    ? "- وافقت جميع اختبارات الشبكة الأساسية والموسعة توقعات الإنفاذ المحددة."
-    : "- توجد نتيجة شبكة غير ناجحة أو ناقصة وتحتاج مراجعة."] : []),
-  ...(scope !== "network" ? [results.F3_1?.status === "FAIL"
-    ? "- قاس F3_1 فشلًا في سلامة المحتوى: غيّرت truncate ملفًا صنفته السياسة المطبقة كـ read_only. لا تكفي نتيجة الاختبار وحدها لتحديد الآلية المسببة."
-    : "- لم يسجل F3_1 فشلًا في أحدث جولة."] : []),
-  ...(unreviewedExtendedFailures.length ? [`- إخفاقات robustness التي ما زالت تحتاج مراجعة دلالية: ${unreviewedExtendedFailures.join(", ")}.`] : []),
-  ...(knownLimitations.length ? [`- قيود Landlock الموثقة التي ظهرت: ${knownLimitations.join(", ")}. لا تُحسب هذه كإخفاقات إنفاذ مستقلة.`] : []),
-  ...(results.N08?.status === "EXPECTED" ? ["- طابق N08 التوقع المحدد مسبقًا في المختبر لمعاملة HEAD مع قاعدة GET."] : []),
-  ...(results.F2_17?.status === "EXPECTED" ? ["- لاحظ F2_17 أن التنفيذ من مسار read_only ظل مسموحًا؛ وتقيس اختبارات منفصلة قيود تعديل المحتوى."] : []),
-  ...(results.F3_1?.status === "FAIL" && results.F3_3?.status === "FAIL" ? ["- F3_1 وF3_3 ملاحظتان مترابطتان لسلوك truncate وتُجمعان كنتيجة أولية واحدة. يحتاج تحديد سبب جذري بعينه إلى دليل تشغيل منفصل."] : []),
-  ...(missing.length ? [`- النتائج المفقودة: ${missing.join(", ")}.`] : []),
-  ...(evidenceProblems.length ? [`- مشكلات سلامة الأدلة: ${evidenceProblems.join(" ")}`] : []),
-  "",
-  `رمز الخروج: \`${exitCode}\` (0 لا توجد إخفاقات إنفاذ مقاسة، وتظل PASS_WITH_LIMITATIONS ظاهرة بوضوح؛ 1 فشل مقاس؛ 2 نتيجة ناقصة أو غير حاسمة).`,
-  "",
-].join("\n");
-
 // Layout: latest/LATEST.* keeps stable paths; the same files are also kept per run under run-history/<run-id>/
 // and as the latest report of each OpenShell version under latest-by-version/<version>/.
 const runDir = path.join(outputDir, "run-history", selectedRunId ?? `unknown-${stamp}`);
@@ -448,15 +408,12 @@ fs.mkdirSync(latestDir, { recursive: true });
 for (const [directory, name, content] of [
   [runDir, "analysis.json", json],
   [runDir, "analysis.md", markdown],
-  [runDir, "analysis_AR.md", markdownAr],
   [latestDir, "LATEST.json", json],
   [latestDir, "LATEST.md", markdown],
-  [latestDir, "LATEST_AR.md", markdownAr],
   [versionDir, "LATEST.json", json],
   [versionDir, "LATEST.md", markdown],
-  [versionDir, "LATEST_AR.md", markdownAr],
 ]) fs.writeFileSync(path.join(directory, name), content, "utf8");
 
 console.log(markdown);
-console.log(`Analysis files: ${path.relative(root, latestDir).replaceAll("\\", "/")}/LATEST.md, LATEST_AR.md, LATEST.json, and ${path.relative(root, runDir).replaceAll("\\", "/")}/`);
+console.log(`Analysis files: ${path.relative(root, latestDir).replaceAll("\\", "/")}/LATEST.md, LATEST.json, and ${path.relative(root, runDir).replaceAll("\\", "/")}/`);
 process.exitCode = exitCode;

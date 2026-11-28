@@ -66,6 +66,14 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 command -v node >/dev/null 2>&1 || { echo "node not found (checked PATH and ~/.nvm/versions/node/*/bin)." >&2; exit 2; }
 
+# Keep audit-reports/tier-checks/ showing only the check(s) run this session: archive the current
+# report of whichever of the three checks is NOT selected below into run-history/.
+RUNNING_CHECKS=()
+[[ $RUN_MONO -eq 1 ]] && RUNNING_CHECKS+=("network-monotonicity")
+[[ $RUN_INVARIANCE -eq 1 ]] && RUNNING_CHECKS+=("filesystem-invariance")
+[[ $RUN_LIVE -eq 1 ]] && RUNNING_CHECKS+=("live-network-reachability")
+node "$ROOT/tests/tier-checks/archive-unrun-checks.mjs" "${RUNNING_CHECKS[@]}"
+
 # shellcheck disable=SC1091
 source "$ROOT/tests/shared/openshell-versions.sh"
 ORIGINAL_VERSION="$(ovl_current)"

@@ -116,11 +116,10 @@ The runner gives every invocation one audit run ID. The analyzer accepts only re
 
 ```text
 audit-reports/enforcement-audit/latest/LATEST.md
-audit-reports/enforcement-audit/latest/LATEST_AR.md
 audit-reports/enforcement-audit/latest/LATEST.json
-audit-reports/enforcement-audit/run-history/<run-id>/   (analysis.md, analysis_AR.md, analysis.json for that run)
+audit-reports/enforcement-audit/run-history/<run-id>/   (analysis.md, analysis.json for that run)
 audit-reports/enforcement-audit/latest-by-version/<openshell-version>/LATEST.*   (latest report of each OpenShell version)
-audit-reports/enforcement-audit/latest/COMPARISON.md, COMPARISON_AR.md, COMPARISON.json   (written when two or more versions were run)
+audit-reports/enforcement-audit/latest/COMPARISON.md, COMPARISON.json   (written when two or more versions were run)
 ```
 
 Each report starts with a status summary and a "Needs attention" list, then separate Network and Filesystem tables with a short description for every test.
