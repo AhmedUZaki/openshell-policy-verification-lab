@@ -45,6 +45,7 @@ probe() {
 
 echo "[" > "$RAW_JSON"
 first=1
+FAILED_TIERS=()
 for tier in "${TIERS[@]}"; do
   printf '\n=== Tier: %s ===\n' "$tier"
   name="ft-tnet-$tier"
@@ -52,6 +53,7 @@ for tier in "${TIERS[@]}"; do
   openshell sandbox delete "$name" >/dev/null 2>&1 || true
   if ! openshell sandbox create --name "$name" --from "$IMAGE" --policy "$policy" --approval-mode manual --detach; then
     echo "Sandbox creation failed for tier $tier" >&2
+    FAILED_TIERS+=("$tier")
     continue
   fi
   for dest in "${DESTS[@]}"; do
@@ -70,3 +72,8 @@ echo "]" >> "$RAW_JSON"
 
 printf '\nRaw results: %s\n' "${RAW_JSON#"$ROOT"/}"
 echo "$STAMP"
+
+if [[ ${#FAILED_TIERS[@]} -gt 0 ]]; then
+  printf 'Tier(s) with a sandbox-creation failure (no result collected): %s\n' "${FAILED_TIERS[*]}" >&2
+  exit 2
+fi
