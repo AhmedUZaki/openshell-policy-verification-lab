@@ -1,5 +1,5 @@
 # GENERATED FILE -- do not edit by hand.
-# Regenerate with: node tests/network/nemoclaw-tiers/compose-tier-filesystem-policy.mjs restricted policies/filesystem-tier-restricted.yaml
+# Regenerate with: node tests/network/nemoclaw-tiers/compose-tier-filesystem-policy.mjs restricted policies/filesystem-with-network-tier-restricted.yaml
 # Source: policies/filesystem-restrictive.yaml (filesystem_policy/landlock/process) plus this
 # tier's static presets from tests/network/nemoclaw-tiers/ (NemoClaw v0.0.140, commit 88fe14f3).
 version: 1

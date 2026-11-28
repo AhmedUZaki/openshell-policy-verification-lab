@@ -24,7 +24,7 @@ declare -A RUN_EXIT
 for tier in "${TIERS[@]}"; do
   printf '\n=== Tier: %s ===\n' "$tier"
   # Committed, not a throwaway state file: see tests/network/nemoclaw-tiers/SOURCE.md.
-  policy_file="$ROOT/policies/filesystem-tier-$tier.yaml"
+  policy_file="$ROOT/policies/filesystem-with-network-tier-$tier.yaml"
   node "$ROOT/tests/network/nemoclaw-tiers/compose-tier-filesystem-policy.mjs" "$tier" "$policy_file"
 
   run_id="$STAMP_BASE-tier-$tier"
