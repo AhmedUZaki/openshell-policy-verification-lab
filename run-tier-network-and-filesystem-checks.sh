@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
-# Runs all three NemoClaw metamorphic-tier checks from docs/CLAIMS.md, "Policy comparisons",
-# in one command:
-#   1. Network monotonicity  -- check-tier-monotonicity.mjs (static, offline; no sandbox)
-#   2. Filesystem invariance -- run-tier-filesystem-invariance.sh (real sandboxes, no internet)
+# Runs the NemoClaw metamorphic-tier checks from docs/CLAIMS.md, "Policy comparisons":
+#   1. Network monotonicity      -- check-tier-monotonicity.mjs (static, offline; no sandbox).
+#      Compares the real, vendored NemoClaw tier/preset YAML as text: every destination allowed
+#      under a narrower tier must still be allowed under each wider tier.
+#   2. Filesystem invariance     -- run-tier-filesystem-invariance.sh (real sandboxes, no
+#      internet). Runs the real F1-F4 suite three times, once per tier, with the filesystem
+#      policy held identical; the network tier must not change any filesystem result.
 #   3. Live network reachability -- run-live-network-reachability.sh +
 #      evaluate-live-network-reachability.mjs (real sandboxes AND live internet to two public
-#      hosts; opt-in only, since it is the one check in this lab that needs live internet)
+#      hosts: pypi.org, wttr.in). The one check that actually proves OpenShell enforces the
+#      tier boundary live, not just that the policy text says so.
 #
 # Usage:
-#   bash run-tier-network-and-filesystem-checks.sh            (1 and 2 only)
-#   bash run-tier-network-and-filesystem-checks.sh --live     (all three)
+#   bash run-tier-network-and-filesystem-checks.sh                     (1 and 2; no internet)
+#   bash run-tier-network-and-filesystem-checks.sh --live               (all three)
+#   bash run-tier-network-and-filesystem-checks.sh --monotonicity-only  (1 only)
+#   bash run-tier-network-and-filesystem-checks.sh --invariance-only    (2 only)
+#   bash run-tier-network-and-filesystem-checks.sh --live-only          (3 only)
 #
 # Exit codes:
 #   0  every check that ran passed
@@ -18,11 +25,19 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LIVE=0
+RUN_MONO=1
+RUN_INVARIANCE=1
+RUN_LIVE=0
 for arg in "$@"; do
   case "$arg" in
-    --live) LIVE=1 ;;
-    *) echo "Usage: $0 [--live]" >&2; exit 2 ;;
+    --live) RUN_LIVE=1 ;;
+    --monotonicity-only) RUN_MONO=1; RUN_INVARIANCE=0; RUN_LIVE=0 ;;
+    --invariance-only) RUN_MONO=0; RUN_INVARIANCE=1; RUN_LIVE=0 ;;
+    --live-only) RUN_MONO=0; RUN_INVARIANCE=0; RUN_LIVE=1 ;;
+    *)
+      echo "Usage: $0 [--live|--monotonicity-only|--invariance-only|--live-only]" >&2
+      exit 2
+      ;;
   esac
 done
 
@@ -36,25 +51,32 @@ command -v node >/dev/null 2>&1 || { echo "node not found (checked PATH and ~/.n
 
 RUN_ID="${AUDIT_RUN_ID:-$(date +%Y%m%d-%H%M%S)}"
 RESULT=0
+MONO_STATUS="SKIPPED"
+INVARIANCE_STATUS="SKIPPED"
+LIVE_STATUS="SKIPPED (pass --live or --live-only to run it; needs live internet to pypi.org and wttr.in)"
 
-printf '\n########## 1/3  Network monotonicity (offline, no sandbox) ##########\n'
-node "$ROOT/tests/tier-checks/check-tier-monotonicity.mjs"
-case $? in
-  0) MONO_STATUS=PASS ;;
-  1) MONO_STATUS=FAIL; RESULT=1 ;;
-  *) MONO_STATUS=ERROR; [[ $RESULT -lt 2 ]] && RESULT=2 ;;
-esac
+if [[ $RUN_MONO -eq 1 ]]; then
+  printf '\n########## Network monotonicity (offline, no sandbox) ##########\n'
+  node "$ROOT/tests/tier-checks/check-tier-monotonicity.mjs"
+  case $? in
+    0) MONO_STATUS=PASS ;;
+    1) MONO_STATUS=FAIL; RESULT=1 ;;
+    *) MONO_STATUS=ERROR; [[ $RESULT -lt 2 ]] && RESULT=2 ;;
+  esac
+fi
 
-printf '\n########## 2/3  Filesystem invariance (real sandboxes, no internet) ##########\n'
-AUDIT_RUN_ID="$RUN_ID" bash "$ROOT/tests/tier-checks/run-tier-filesystem-invariance.sh"
-case $? in
-  0) INVARIANCE_STATUS=PASS ;;
-  1) INVARIANCE_STATUS=FAIL; RESULT=1 ;;
-  *) INVARIANCE_STATUS=ERROR; [[ $RESULT -lt 2 ]] && RESULT=2 ;;
-esac
+if [[ $RUN_INVARIANCE -eq 1 ]]; then
+  printf '\n########## Filesystem invariance (real sandboxes, no internet) ##########\n'
+  AUDIT_RUN_ID="$RUN_ID" bash "$ROOT/tests/tier-checks/run-tier-filesystem-invariance.sh"
+  case $? in
+    0) INVARIANCE_STATUS=PASS ;;
+    1) INVARIANCE_STATUS=FAIL; RESULT=1 ;;
+    *) INVARIANCE_STATUS=ERROR; [[ $RESULT -lt 2 ]] && RESULT=2 ;;
+  esac
+fi
 
-if [[ $LIVE -eq 1 ]]; then
-  printf '\n########## 3/3  Live network reachability (real sandboxes + live internet) ##########\n'
+if [[ $RUN_LIVE -eq 1 ]]; then
+  printf '\n########## Live network reachability (real sandboxes + live internet) ##########\n'
   AUDIT_RUN_ID="$RUN_ID" bash "$ROOT/tests/tier-checks/run-live-network-reachability.sh"
   LIVE_RUN_RC=$?
   if [[ $LIVE_RUN_RC -eq 0 ]]; then
@@ -68,17 +90,15 @@ if [[ $LIVE -eq 1 ]]; then
     LIVE_STATUS=ERROR
     [[ $RESULT -lt 2 ]] && RESULT=2
   fi
-else
-  LIVE_STATUS="SKIPPED (pass --live to run it; needs live internet to pypi.org and wttr.in)"
 fi
 
 printf '\n========== Summary (run %s) ==========\n' "$RUN_ID"
-printf '1. Network monotonicity:      %s\n' "$MONO_STATUS"
-printf '2. Filesystem invariance:     %s\n' "$INVARIANCE_STATUS"
-printf '3. Live network reachability: %s\n' "$LIVE_STATUS"
+printf 'Network monotonicity:      %s\n' "$MONO_STATUS"
+printf 'Filesystem invariance:     %s\n' "$INVARIANCE_STATUS"
+printf 'Live network reachability: %s\n' "$LIVE_STATUS"
 printf '\nReports:\n'
-printf '  audit-reports/tier-checks/network-monotonicity/TIER-MONOTONICITY.md\n'
-printf '  audit-reports/tier-checks/filesystem-invariance/TIER-FS-INVARIANCE.md\n'
-[[ $LIVE -eq 1 ]] && printf '  audit-reports/tier-checks/live-network-reachability/LIVE-NETWORK-REACHABILITY.md\n'
+[[ $RUN_MONO -eq 1 ]] && printf '  audit-reports/tier-checks/network-monotonicity/TIER-MONOTONICITY.md\n'
+[[ $RUN_INVARIANCE -eq 1 ]] && printf '  audit-reports/tier-checks/filesystem-invariance/TIER-FS-INVARIANCE.md\n'
+[[ $RUN_LIVE -eq 1 ]] && printf '  audit-reports/tier-checks/live-network-reachability/LIVE-NETWORK-REACHABILITY.md\n'
 
 exit $RESULT
