@@ -37,7 +37,7 @@ fi
 
 # Names for the local test servers. macOS and OpenShell 0.1.x use host.openshell.internal on ports 443 and 444
 # (see tests/shared/gateway-network-config.sh); OpenShell 0.0.x on Linux uses Docker network aliases.
-source "$HERE/../shared/gateway-network-config.sh"
+source "$HERE/../../shared/gateway-network-config.sh"
 if [[ "$(uname -s)" == Darwin ]]; then
   ORIGIN_IP=127.0.0.1
   HOST_A=host.openshell.internal

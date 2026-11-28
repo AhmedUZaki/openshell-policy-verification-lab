@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.dirname(path.dirname(here));
-const resultsDir = path.join(root, "tests", "filesystem", "results");
+const resultsDir = path.join(root, "tests", "enforcement-audit", "filesystem", "results");
 
 const [, , restrictedRunId, balancedRunId, openRunId] = process.argv;
 const TIERS = [["restricted", restrictedRunId], ["balanced", balancedRunId], ["open", openRunId]];

@@ -14,8 +14,8 @@
 # runner. Exit code: 0 = no FAIL/ERROR, 1 = at least one.
 #
 # Usage:
-#   bash tests/network/run-legacy-openshell-probes.sh
-#   DRY_RUN=1 bash tests/network/run-legacy-openshell-probes.sh
+#   bash tests/enforcement-audit/network/run-legacy-openshell-probes.sh
+#   DRY_RUN=1 bash tests/enforcement-audit/network/run-legacy-openshell-probes.sh
 
 set -uo pipefail
 

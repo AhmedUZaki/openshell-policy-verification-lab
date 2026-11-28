@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-STATE_DIR="$ROOT/tests/filesystem/.state"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+STATE_DIR="$ROOT/tests/enforcement-audit/filesystem/.state"
 STATE_FILE="$STATE_DIR/filesystem.env"
 RESTRICTIVE_NAME="ft-fs-restrict"
 PERMISSIVE_NAME="ft-fs-permit"
-# Override for tier-invariance testing (tests/network/run-tier-filesystem-invariance.sh): same
+# Override for tier-invariance testing (tests/tier-checks/run-tier-filesystem-invariance.sh): same
 # filesystem_policy as policies/enforcement-audit/filesystem-restrictive.yaml, with one NemoClaw tier's
 # network_policies added. Defaults to the unmodified file, so normal runs are unaffected.
 RESTRICTIVE_POLICY="${FS_RESTRICTIVE_POLICY:-$ROOT/policies/enforcement-audit/filesystem-restrictive.yaml}"
@@ -33,12 +33,12 @@ ensure_gateway "$STATE_DIR"
 
 for name in "$RESTRICTIVE_NAME" "$PERMISSIVE_NAME"; do
   if openshell sandbox list --names 2>/dev/null | grep -Fxq "$name"; then
-    printf 'Sandbox already exists: %s\nRun tests/filesystem/cleanup-filesystem-test-environment.sh first.\n' "$name" >&2
+    printf 'Sandbox already exists: %s\nRun tests/enforcement-audit/filesystem/cleanup-filesystem-test-environment.sh first.\n' "$name" >&2
     exit 2
   fi
 done
 
-mkdir -p "$STATE_DIR" "$ROOT/tests/filesystem/results"
+mkdir -p "$STATE_DIR" "$ROOT/tests/enforcement-audit/filesystem/results"
 
 cleanup_partial() {
   openshell sandbox delete "$RESTRICTIVE_NAME" >/dev/null 2>&1 || true
@@ -81,4 +81,4 @@ EOF
 
 trap - ERR
 printf 'Ready. State: %s\n' "$STATE_FILE"
-printf 'Next: bash tests/filesystem/run-filesystem-tests.sh\n'
+printf 'Next: bash tests/enforcement-audit/filesystem/run-filesystem-tests.sh\n'

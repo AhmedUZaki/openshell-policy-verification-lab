@@ -2,7 +2,7 @@
 
 OpenShell's own policy validation is expected to reject host-wildcard patterns that have no fixed domain anchor, consistent with its published deny-by-default network model (`docs.nvidia.com/openshell/<version>/security/best-practices`: "All egress denied. Only endpoints listed in `network_policies` can receive traffic."), though specific wildcard-pattern validation rules are not documented anywhere this lab checked. This note records an independent live reproduction of which wildcard host patterns `openshell policy set` actually accepts or rejects, on two OpenShell releases, with full request/response evidence, and finds that several patterns with no fixed anchor pass validation anyway.
 
-N11 is part of the automated N01-N12 network suite (`docs/CLAIMS.md`), run by `tests/network/run-network-tests.sh`; it does not use the restrictive-baseline policy for its own probe, because the finding is specifically about what the validator accepts in place of that baseline - the script swaps `ft-network`'s policy for the duration of the probe and reverts it afterward, the same pattern N06 already uses for its own policy change. This note was originally written from a manual, standalone reproduction across several OpenShell releases (0.1.9, 0.1.10); the automated N11 test now exercises the single riskiest pattern (`**.*.*`) on every run.
+N11 is part of the automated N01-N12 network suite (`docs/CLAIMS.md`), run by `tests/enforcement-audit/network/run-network-tests.sh`; it does not use the restrictive-baseline policy for its own probe, because the finding is specifically about what the validator accepts in place of that baseline - the script swaps `ft-network`'s policy for the duration of the probe and reverts it afterward, the same pattern N06 already uses for its own policy change. This note was originally written from a manual, standalone reproduction across several OpenShell releases (0.1.9, 0.1.10); the automated N11 test now exercises the single riskiest pattern (`**.*.*`) on every run.
 
 ## Summary
 
@@ -21,11 +21,11 @@ N11 is part of the automated N01-N12 network suite (`docs/CLAIMS.md`), run by `t
 
 ## What was measured, and how
 
-Sandbox: `ft-network`, created by `tests/network/create-network-test-sandbox.sh` against the lab's own local Caddy/origin, then given a policy whose only network rule is the pattern under test (`protocol: rest`, `allow: {method: GET, path: /public}`, no `allowed_ips` restriction) - i.e. the pattern is the *only* thing standing between the sandbox and the open internet.
+Sandbox: `ft-network`, created by `tests/enforcement-audit/network/create-network-test-sandbox.sh` against the lab's own local Caddy/origin, then given a policy whose only network rule is the pattern under test (`protocol: rest`, `allow: {method: GET, path: /public}`, no `allowed_ips` restriction) - i.e. the pattern is the *only* thing standing between the sandbox and the open internet.
 
 1. `openshell policy set ft-network --policy <file-with-the-pattern> --wait` - records accept (`Policy version N loaded`) or reject (`L7 policy validation failed`).
 2. For N11a only, on both versions: from inside the sandbox, `curl https://www.example.com/public`. This is the decisive step - a pattern can be *accepted* without *proving* real egress, since the sandbox's network path still has to carry the connection through to a real host.
-3. Immediately after each test, the policy was reverted to the lab's own generated restrictive policy (`tests/network/.state/network-generated.yaml`: named host, single allowed path, `allowed_ips` pinned to the local Caddy container) and reachability to `www.example.com` was re-checked to confirm it was closed again.
+3. Immediately after each test, the policy was reverted to the lab's own generated restrictive policy (`tests/enforcement-audit/network/.state/network-generated.yaml`: named host, single allowed path, `allowed_ips` pinned to the local Caddy container) and reachability to `www.example.com` was re-checked to confirm it was closed again.
 
 ### N11a (`**.*.*`) - full reproduction, both versions
 
@@ -50,7 +50,7 @@ x-openshell-request-id: <uuid>
 
 ### N11b-N11h - validation only (0.1.9)
 
-Only *validation* (accept/reject) was measured for N11b-N11h; reachability was not re-confirmed for each, since N11a already demonstrates that an accepted all-wildcard pattern reaches the real internet, and the point of this batch is the breadth of the validation gap, not a second reachability proof. Reproduced by `tests/network/upstream-probes/n11-wildcard-validation-probe.sh`, which builds a policy per pattern, submits it, records the outcome, and reverts to the lab's generated restrictive policy after every attempt (so no pattern is left active between tests).
+Only *validation* (accept/reject) was measured for N11b-N11h; reachability was not re-confirmed for each, since N11a already demonstrates that an accepted all-wildcard pattern reaches the real internet, and the point of this batch is the breadth of the validation gap, not a second reachability proof. Reproduced by `tests/enforcement-audit/network/upstream-probes/n11-wildcard-validation-probe.sh`, which builds a policy per pattern, submits it, records the outcome, and reverts to the lab's generated restrictive policy after every attempt (so no pattern is left active between tests).
 
 ## What this establishes
 
@@ -66,25 +66,25 @@ Reproducible on-demand, with a live egress proof (not just an accepted policy) o
 
 ## How to reproduce
 
-The N11 block in `tests/network/run-network-tests.sh` runs this automatically as part of `bash run-enforcement-audit.sh` (or `--network-only`). To reproduce just this part by hand:
+The N11 block in `tests/enforcement-audit/network/run-network-tests.sh` runs this automatically as part of `bash run-enforcement-audit.sh` (or `--network-only`). To reproduce just this part by hand:
 
 ```bash
-bash tests/network/setup-local-test-servers.sh
-bash tests/network/create-network-test-sandbox.sh
+bash tests/enforcement-audit/network/setup-local-test-servers.sh
+bash tests/enforcement-audit/network/create-network-test-sandbox.sh
 openshell policy set ft-network --policy policies/enforcement-audit/network-n11-wildcard-policy.yaml --wait
 openshell sandbox exec --name ft-network --no-tty --timeout 15 -- \
   curl -k -sS -i --max-time 10 https://www.example.com/public
 # revert immediately:
-openshell policy set ft-network --policy tests/network/.state/effective-policy-initial.yaml --wait
+openshell policy set ft-network --policy tests/enforcement-audit/network/.state/effective-policy-initial.yaml --wait
 ```
 
 To repeat on a different OpenShell release:
 
 ```bash
 bash setup/4b-install-openshell-versions.sh use 0.1.10   # or any stored version
-bash tests/network/cleanup-network-test-environment.sh
-bash tests/network/setup-local-test-servers.sh
-bash tests/network/create-network-test-sandbox.sh
+bash tests/enforcement-audit/network/cleanup-network-test-environment.sh
+bash tests/enforcement-audit/network/setup-local-test-servers.sh
+bash tests/enforcement-audit/network/create-network-test-sandbox.sh
 # ...then the policy set / curl / revert steps above
 bash setup/4b-install-openshell-versions.sh use 0.0.116  # restore the lab's reference baseline
 ```

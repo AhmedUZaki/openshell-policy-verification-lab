@@ -20,7 +20,7 @@ No public test server, domain, Cloudflare account, model provider, or API creden
 | Other systemd Linux distributions | Best effort | Docker plus a compatible pinned NemoClaw/OpenShell installation |
 | Intel macOS or native Windows without WSL 2 | Not supported by this runner | Use a supported host above |
 
-This is not a claim that every machine with one of these operating systems will work. Port 443 must be free on Windows/WSL and Linux; ports 443 and 444 must be free on macOS. Docker must be reachable by the current user, and the machine must meet the pinned NemoClaw requirements. The main runner is portable; `tests/network/run-legacy-openshell-probes.sh` is a retained Linux/WSL-only historical helper and is not part of N01–F1_2.
+This is not a claim that every machine with one of these operating systems will work. Port 443 must be free on Windows/WSL and Linux; ports 443 and 444 must be free on macOS. Docker must be reachable by the current user, and the machine must meet the pinned NemoClaw requirements. The main runner is portable; `tests/enforcement-audit/network/run-legacy-openshell-probes.sh` is a retained Linux/WSL-only historical helper and is not part of N01–F1_2.
 
 ## One-command execution
 
@@ -123,14 +123,14 @@ audit-reports/enforcement-audit/latest/COMPARISON.md, COMPARISON_AR.md, COMPARIS
 
 Each report starts with a status summary and a "Needs attention" list, then separate Network and Filesystem tables with a short description for every test.
 
-At the start of every new run, `tests/archive-previous-results.mjs` moves all earlier results (raw evidence, signed manifests, and reports) to `archived-results/<previous-run-id>/` (ignored by Git) so the active folders contain only the current run. Nothing is deleted.
+At the start of every new run, `tests/enforcement-audit/archive-previous-results.mjs` moves all earlier results (raw evidence, signed manifests, and reports) to `archived-results/<previous-run-id>/` (ignored by Git) so the active folders contain only the current run. Nothing is deleted.
 
-Raw evidence is written under `tests/network/results/` and/or `tests/filesystem/results/`. Signed manifests are written under `evidence-attestations/`.
+Raw evidence is written under `tests/enforcement-audit/network/results/` and/or `tests/enforcement-audit/filesystem/results/`. Signed manifests are written under `evidence-attestations/`.
 
 Run analysis without rerunning the experiments:
 
 ```bash
-bash tests/analyze-results.sh
+bash tests/enforcement-audit/analyze-results.sh
 ```
 
 Without `--run-id`, full analysis selects the newest matching network/filesystem pair by report modification time; it never combines unrelated runs. A scoped analysis selects the newest report for that scope. You can select an exact run explicitly with `--run-id ID`.
@@ -144,7 +144,7 @@ tests\analyze-results.cmd
 Verify the analyzer itself with portable synthetic fault-injection tests (no Docker or OpenShell required):
 
 ```bash
-node tests/verify-analysis-integrity.mjs
+node tests/enforcement-audit/verify-analysis-integrity.mjs
 ```
 
 Every real audit run also creates a SHA-256 manifest signed with a local Ed25519 key. The first run creates the signing identity under ignored `.local-keys/`; never commit or share the private key. Record the printed public-key fingerprint outside the repository if independent chain-of-custody verification is required (the reference machine's fingerprint is published at https://gist.github.com/AhmedUZaki/ea3571bb522ee407d4966ff946e3cb9b).
@@ -152,7 +152,7 @@ Every real audit run also creates a SHA-256 manifest signed with a local Ed25519
 Verify a transferred run against a separately obtained public key:
 
 ```bash
-node tests/evidence-attestation.mjs verify --run-id RUN_ID --public-key /trusted/path/evidence-public-key.pem
+node tests/enforcement-audit/evidence-attestation.mjs verify --run-id RUN_ID --public-key /trusted/path/evidence-public-key.pem
 ```
 
 Exit codes are stable for local automation and CI:

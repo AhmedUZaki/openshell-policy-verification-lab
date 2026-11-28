@@ -21,6 +21,8 @@ jobs:
         with:
           node-version: "22"
       - name: Check JavaScript syntax
-        run: node --check tests/evidence-attestation.mjs && node --check tests/analyze-results.mjs && node --check tests/verify-analysis-integrity.mjs
+        run: node --check tests/enforcement-audit/evidence-attestation.mjs && node --check tests/enforcement-audit/analyze-results.mjs && node --check tests/enforcement-audit/verify-analysis-integrity.mjs && node --check tests/tier-checks/check-tier-monotonicity.mjs
       - name: Run analyzer and signature fault injection
-        run: node tests/verify-analysis-integrity.mjs
+        run: node tests/enforcement-audit/verify-analysis-integrity.mjs
+      - name: Run tier-monotonicity self-test
+        run: node tests/tier-checks/check-tier-monotonicity.mjs --self-test

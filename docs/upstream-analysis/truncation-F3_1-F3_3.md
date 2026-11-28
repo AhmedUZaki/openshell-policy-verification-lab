@@ -25,7 +25,7 @@ OpenShell 0.0.116 applied Landlock ABI **V2** (`abi:V2` in the recorded logs). W
 
 | # | Evidence | Where |
 |---|---|---|
-| 1 | The lab's own run recorded `Applying Landlock filesystem sandbox [abi:V2 compat:HardRequirement ...]`, while the same kernel reports ABI 7 when queried directly. The kernel was not the limit. | `tests/filesystem/results/*.md`, section "Landlock-related log lines" |
+| 1 | The lab's own run recorded `Applying Landlock filesystem sandbox [abi:V2 compat:HardRequirement ...]`, while the same kernel reports ABI 7 when queried directly. The kernel was not the limit. | `tests/enforcement-audit/filesystem/results/*.md`, section "Landlock-related log lines" |
 | 2 | In the `v0.0.116` source the ABI is a hard-coded constant, not probed: `let abi = ABI::V2;` followed by `AccessFs::from_all(abi)`. There is no comment explaining the choice. | `crates/openshell-supervisor-process/src/sandbox/linux/landlock.rs`, line 190 |
 | 3 | Landlock only added the truncate access right in ABI v3 (Linux 6.2). A ruleset built from `AccessFs::from_all(ABI::V2)` therefore does not handle `truncate`, `ftruncate`, or `open(O_TRUNC)`. This matches F3_1 (`truncate`) failing on 0.0.116. (It was first thought to explain F3_3 as well; Part 2 shows it does not.) | Landlock kernel documentation; OpenShell's own comment in evidence 5 |
 | 4 | The `v0.0.116` documentation says `best_effort` "uses the highest Landlock ABI the host kernel supports". The code above requests V2 in both modes, so on this release the documentation and the code disagree. | `docs/reference/support-matrix.mdx` line 91; `docs/security/best-practices.mdx` line 166 |
@@ -59,7 +59,7 @@ What this shows, as measured at that time:
   | `open(path, "w")` / shell `: >` | denied, unchanged | denied, unchanged |
 
   So on 0.1.9 only the `O_RDONLY|O_TRUNC` combination both reports an error and empties the file.
-- A standalone Landlock test, outside OpenShell (`tests/diagnostics/landlock_truncate_probe.py`, temp directory only), behaved differently on the same kernel: with the V2 rights the open truncates the file, with the V3 rights the open fails **and the file stays intact**. That test used a file in an ordinary temporary directory; the F3_3 fixture ships in the sandbox image. The follow-up below shows that this difference matters.
+- A standalone Landlock test, outside OpenShell (`tests/enforcement-audit/diagnostics/landlock_truncate_probe.py`, temp directory only), behaved differently on the same kernel: with the V2 rights the open truncates the file, with the V3 rights the open fails **and the file stays intact**. That test used a file in an ordinary temporary directory; the F3_3 fixture ships in the sandbox image. The follow-up below shows that this difference matters.
 - The workload processes run with seccomp filters on both versions (5 on 0.0.116, 7 on 0.1.9; `NoNewPrivs` set, uid 1500). The follow-up below reproduces the behavior without any OpenShell seccomp filters, so they are not needed to produce it.
 
 ### F3_3 after the measurement (follow-up, 2026-11-26)

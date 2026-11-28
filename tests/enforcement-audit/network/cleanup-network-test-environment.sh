@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-HERE="$ROOT/tests/network"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+HERE="$ROOT/tests/enforcement-audit/network"
 source "$ROOT/tests/shared/gateway-lifecycle.sh"
 source "$ROOT/tests/shared/gateway-network-config.sh"
 STATE_FILE="$HERE/.state/network.env"

@@ -1,14 +1,16 @@
 # Local-only reference material and archived development evidence
 .local-reference-material/
-tests/diagnostics/
+tests/enforcement-audit/diagnostics/
 
 # Generated audit reports (keep directory placeholders)
 audit-reports/*
 !audit-reports/.gitkeep
-tests/filesystem/results/*
-!tests/filesystem/results/.gitkeep
-tests/network/results/*
-!tests/network/results/.gitkeep
+tests/enforcement-audit/filesystem/results/*
+!tests/enforcement-audit/filesystem/results/.gitkeep
+tests/enforcement-audit/network/results/*
+!tests/enforcement-audit/network/results/.gitkeep
+tests/tier-checks/results/*
+!tests/tier-checks/results/.gitkeep
 evidence-attestations/*
 !evidence-attestations/.gitkeep
 
@@ -16,10 +18,11 @@ evidence-attestations/*
 .local-keys/
 
 # Runtime state and generated test assets
-tests/filesystem/.state/
-tests/network/.state/
-tests/network/local-test-servers/.runtime/
-tests/network/network-test-sandbox/caddy-root.crt
+tests/enforcement-audit/filesystem/.state/
+tests/enforcement-audit/network/.state/
+tests/enforcement-audit/network/local-test-servers/.runtime/
+tests/enforcement-audit/network/network-test-sandbox/caddy-root.crt
+tests/tier-checks/.state/
 
 # Common local artifacts
 node_modules/
@@ -29,7 +32,7 @@ Thumbs.db
 
 graphify-out/
 
-# Results of earlier runs, moved here automatically by tests/archive-previous-results.mjs
+# Results of earlier runs, moved here automatically by tests/enforcement-audit/archive-previous-results.mjs
 archived-results/
 
 # Temporary hand-over file written by the Windows launcher between its menu steps

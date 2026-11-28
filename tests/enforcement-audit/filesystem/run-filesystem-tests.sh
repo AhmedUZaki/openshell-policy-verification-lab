@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-STATE_FILE="$ROOT/tests/filesystem/.state/filesystem.env"
-RESULTS_DIR="$ROOT/tests/filesystem/results"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+STATE_FILE="$ROOT/tests/enforcement-audit/filesystem/.state/filesystem.env"
+RESULTS_DIR="$ROOT/tests/enforcement-audit/filesystem/results"
 STAMP="${AUDIT_RUN_ID:-$(date +%Y%m%d-%H%M%S)}"
 [[ "$STAMP" =~ ^[A-Za-z0-9._-]+$ ]] || { echo 'The audit run ID contains unsafe characters.' >&2; exit 2; }
 REPORT="$RESULTS_DIR/filesystem-$STAMP.md"
 RAWLOG="$RESULTS_DIR/filesystem-$STAMP.raw.log"
-OBS_ERROR_FILE="$ROOT/tests/filesystem/.state/observation-error"
+OBS_ERROR_FILE="$ROOT/tests/enforcement-audit/filesystem/.state/observation-error"
 [[ ! -e "$REPORT" && ! -e "$RAWLOG" ]] || { echo "Result files already exist for run ID: $STAMP" >&2; exit 2; }
 
 export PATH="$HOME/.local/bin:$PATH"
 
 if [[ ! -f "$STATE_FILE" ]]; then
-  printf 'State file not found. Run tests/filesystem/setup-filesystem-test-environment.sh first.\n' >&2
+  printf 'State file not found. Run tests/enforcement-audit/filesystem/setup-filesystem-test-environment.sh first.\n' >&2
   exit 2
 fi
 # shellcheck disable=SC1090

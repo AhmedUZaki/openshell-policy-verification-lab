@@ -15,7 +15,7 @@ process.on("unhandledRejection", (error) => {
 });
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const root = path.dirname(here);
+const root = path.dirname(path.dirname(here));
 const outputDir = path.join(root, "audit-reports", "enforcement-audit");
 fs.mkdirSync(outputDir, { recursive: true });
 

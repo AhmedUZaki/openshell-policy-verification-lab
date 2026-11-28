@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const moduleFile = fileURLToPath(import.meta.url);
-const defaultRoot = path.dirname(path.dirname(moduleFile));
+const defaultRoot = path.dirname(path.dirname(path.dirname(moduleFile)));
 
 function sha256(data) {
   return crypto.createHash("sha256").update(data).digest("hex");
@@ -75,7 +75,7 @@ function expectedEvidenceNames(area, runId) {
 function collectEvidenceFiles(root, runId, scope) {
   const files = [];
   for (const area of scopeAreas(scope)) {
-    const directory = path.join(root, "tests", area, "results");
+    const directory = path.join(root, "tests", "enforcement-audit", area, "results");
     if (!fs.existsSync(directory)) continue;
     for (const name of expectedEvidenceNames(area, runId)) {
       const absolute = path.join(directory, name);
@@ -136,7 +136,7 @@ function isSafeEvidencePath(relative, scope) {
   if (typeof relative !== "string" || relative.includes("\\") || path.posix.isAbsolute(relative)) return false;
   const normalized = path.posix.normalize(relative);
   if (normalized !== relative || normalized.startsWith("../") || normalized.includes("/../")) return false;
-  return scopeAreas(scope).some((area) => normalized.startsWith(`tests/${area}/results/${area}-`));
+  return scopeAreas(scope).some((area) => normalized.startsWith(`tests/enforcement-audit/${area}/results/${area}-`));
 }
 
 export function verifyEvidenceAttestation({ root = defaultRoot, runId, scope = "all", publicKeyPath = null }) {

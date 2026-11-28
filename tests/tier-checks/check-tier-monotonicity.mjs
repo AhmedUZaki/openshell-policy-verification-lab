@@ -1,7 +1,7 @@
 // Checks the network metamorphic relation from docs/CLAIMS.md ("Policy comparisons"):
 // any destination allowed under a narrower NemoClaw tier must still be allowed under every
 // wider tier (Restricted -> Balanced -> Open). This is a static, offline check over the real
-// tier/preset definitions vendored in tests/network/nemoclaw-tiers/ (see its SOURCE.md) -- it
+// tier/preset definitions vendored in tests/tier-checks/nemoclaw-tiers/ (see its SOURCE.md) -- it
 // does not create a sandbox or make any network request.
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -74,7 +74,7 @@ const lines = [
   "# Network tier monotonicity",
   "",
   `- Overall: \`${overall}\``,
-  `- Source: NemoClaw v0.0.140, commit 88fe14f3fb9a0bf72997cce19ec88b5b2ee08391 (see tests/network/nemoclaw-tiers/SOURCE.md)`,
+  `- Source: NemoClaw v0.0.140, commit 88fe14f3fb9a0bf72997cce19ec88b5b2ee08391 (see tests/tier-checks/nemoclaw-tiers/SOURCE.md)`,
   `- Pairs checked: ${pairs.map(([a, b]) => `${a}→${b}`).join(", ")}`,
   "",
   "## Destinations per tier",

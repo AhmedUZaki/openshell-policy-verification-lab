@@ -23,17 +23,17 @@ declare -A RUN_EXIT
 
 for tier in "${TIERS[@]}"; do
   printf '\n=== Tier: %s ===\n' "$tier"
-  # Committed, not a throwaway state file: see tests/network/nemoclaw-tiers/SOURCE.md.
+  # Committed, not a throwaway state file: see tests/tier-checks/nemoclaw-tiers/SOURCE.md.
   policy_file="$ROOT/policies/tier-checks/filesystem-with-network-tier-$tier.yaml"
-  node "$ROOT/tests/network/nemoclaw-tiers/compose-tier-filesystem-policy.mjs" "$tier" "$policy_file"
+  node "$ROOT/tests/tier-checks/nemoclaw-tiers/compose-tier-filesystem-policy.mjs" "$tier" "$policy_file"
 
   run_id="$STAMP_BASE-tier-$tier"
   RUN_ID[$tier]="$run_id"
 
-  FS_RESTRICTIVE_POLICY="$policy_file" bash "$ROOT/tests/filesystem/setup-filesystem-test-environment.sh"
-  AUDIT_RUN_ID="$run_id" bash "$ROOT/tests/filesystem/run-filesystem-tests.sh"
+  FS_RESTRICTIVE_POLICY="$policy_file" bash "$ROOT/tests/enforcement-audit/filesystem/setup-filesystem-test-environment.sh"
+  AUDIT_RUN_ID="$run_id" bash "$ROOT/tests/enforcement-audit/filesystem/run-filesystem-tests.sh"
   RUN_EXIT[$tier]=$?
-  bash "$ROOT/tests/filesystem/cleanup-filesystem-test-environment.sh"
+  bash "$ROOT/tests/enforcement-audit/filesystem/cleanup-filesystem-test-environment.sh"
   printf 'Tier %s: run %s, filesystem-tests exit code %s\n' "$tier" "$run_id" "${RUN_EXIT[$tier]}"
 done
 
@@ -45,9 +45,9 @@ for tier in "${TIERS[@]}"; do
 done
 if [[ ${#ABORTED[@]} -gt 0 ]]; then
   printf '\nTier(s) with an infrastructure/inconclusive run (not comparable): %s\n' "${ABORTED[*]}" >&2
-  printf 'See tests/filesystem/results/filesystem-%s*.md for each.\n' "$STAMP_BASE" >&2
+  printf 'See tests/enforcement-audit/filesystem/results/filesystem-%s*.md for each.\n' "$STAMP_BASE" >&2
   exit 2
 fi
 
-node "$ROOT/tests/network/compare-tier-filesystem-results.mjs" \
+node "$ROOT/tests/tier-checks/compare-tier-filesystem-results.mjs" \
   "${RUN_ID[restricted]}" "${RUN_ID[balanced]}" "${RUN_ID[open]}"

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-HERE="$ROOT/tests/network"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+HERE="$ROOT/tests/enforcement-audit/network"
 STATE_DIR="$HERE/.state"
 ORIGIN_STATE="$STATE_DIR/origin.env"
 STATE_FILE="$STATE_DIR/network.env"
@@ -14,7 +14,7 @@ export PATH="$HOME/.local/bin:$PATH"
 for tool in openshell docker curl; do
   command -v "$tool" >/dev/null 2>&1 || { printf 'Missing command: %s\n' "$tool" >&2; exit 2; }
 done
-[[ -f "$ORIGIN_STATE" ]] || { echo 'Run tests/network/setup-local-test-servers.cmd first.' >&2; exit 2; }
+[[ -f "$ORIGIN_STATE" ]] || { echo 'Run tests/enforcement-audit/network/setup-local-test-servers.cmd first.' >&2; exit 2; }
 # shellcheck disable=SC1090
 source "$ORIGIN_STATE"
 
@@ -138,4 +138,4 @@ EOF
 
 trap - ERR
 printf 'Network sandbox ready: %s\n' "$NAME"
-printf 'Next: bash tests/network/run-network-tests.sh\n'
+printf 'Next: bash tests/enforcement-audit/network/run-network-tests.sh\n'

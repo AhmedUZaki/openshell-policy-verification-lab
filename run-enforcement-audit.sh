@@ -239,21 +239,21 @@ BASE_RUN_ID="${AUDIT_RUN_ID:-$(date +%Y%m%d-%H%M%S)-$$}"
 [[ "$BASE_RUN_ID" =~ ^[A-Za-z0-9._-]+$ ]] || { echo 'AUDIT_RUN_ID contains unsafe characters.' >&2; exit 2; }
 
 echo '=== Archiving previous results ==='
-node "$ROOT/tests/archive-previous-results.mjs" || echo 'Warning: some previous results could not be archived; the analyzer still reads only this run ID.' >&2
+node "$ROOT/tests/enforcement-audit/archive-previous-results.mjs" || echo 'Warning: some previous results could not be archived; the analyzer still reads only this run ID.' >&2
 
 run_network() {
   local result=0
   echo 'Removing leftovers of any interrupted earlier network run...'
-  bash "$ROOT/tests/network/cleanup-network-test-environment.sh" || echo 'Warning: leftover cleanup reported a problem; continuing.' >&2
-  bash "$ROOT/tests/network/setup-local-test-servers.sh" || result=2
+  bash "$ROOT/tests/enforcement-audit/network/cleanup-network-test-environment.sh" || echo 'Warning: leftover cleanup reported a problem; continuing.' >&2
+  bash "$ROOT/tests/enforcement-audit/network/setup-local-test-servers.sh" || result=2
   if [[ "$result" == 0 ]]; then
-    bash "$ROOT/tests/network/create-network-test-sandbox.sh" || result=2
+    bash "$ROOT/tests/enforcement-audit/network/create-network-test-sandbox.sh" || result=2
   fi
   if [[ "$result" == 0 ]]; then
-    bash "$ROOT/tests/network/run-network-tests.sh" || result=$?
+    bash "$ROOT/tests/enforcement-audit/network/run-network-tests.sh" || result=$?
   fi
   if [[ "$KEEP" == 0 ]]; then
-    bash "$ROOT/tests/network/cleanup-network-test-environment.sh" || result=2
+    bash "$ROOT/tests/enforcement-audit/network/cleanup-network-test-environment.sh" || result=2
   fi
   return "$result"
 }
@@ -261,13 +261,13 @@ run_network() {
 run_filesystem() {
   local result=0
   echo 'Removing leftovers of any interrupted earlier filesystem run...'
-  bash "$ROOT/tests/filesystem/cleanup-filesystem-test-environment.sh" || echo 'Warning: leftover cleanup reported a problem; continuing.' >&2
-  bash "$ROOT/tests/filesystem/setup-filesystem-test-environment.sh" || result=2
+  bash "$ROOT/tests/enforcement-audit/filesystem/cleanup-filesystem-test-environment.sh" || echo 'Warning: leftover cleanup reported a problem; continuing.' >&2
+  bash "$ROOT/tests/enforcement-audit/filesystem/setup-filesystem-test-environment.sh" || result=2
   if [[ "$result" == 0 ]]; then
-    bash "$ROOT/tests/filesystem/run-filesystem-tests.sh" || result=$?
+    bash "$ROOT/tests/enforcement-audit/filesystem/run-filesystem-tests.sh" || result=$?
   fi
   if [[ "$KEEP" == 0 ]]; then
-    bash "$ROOT/tests/filesystem/cleanup-filesystem-test-environment.sh" || result=2
+    bash "$ROOT/tests/enforcement-audit/filesystem/cleanup-filesystem-test-environment.sh" || result=2
   fi
   return "$result"
 }
@@ -276,7 +276,7 @@ run_filesystem() {
 # Returns the analysis exit code (0, 1) or 2 for any infrastructure problem.
 run_audit() {
   local infra_failure=0 analysis_args=() analysis_rc
-  if [[ ( "$RUN_NETWORK" == 1 && ( -e "$ROOT/tests/network/results/network-$AUDIT_RUN_ID.md" || -e "$ROOT/tests/network/results/network-$AUDIT_RUN_ID.raw.log" ) ) || ( "$RUN_FILESYSTEM" == 1 && ( -e "$ROOT/tests/filesystem/results/filesystem-$AUDIT_RUN_ID.md" || -e "$ROOT/tests/filesystem/results/filesystem-$AUDIT_RUN_ID.raw.log" ) ) || -e "$ROOT/evidence-attestations/evidence-$AUDIT_RUN_ID.manifest.json" || -e "$ROOT/evidence-attestations/evidence-$AUDIT_RUN_ID.sig" || -e "$ROOT/evidence-attestations/evidence-$AUDIT_RUN_ID.public.pem" ]]; then
+  if [[ ( "$RUN_NETWORK" == 1 && ( -e "$ROOT/tests/enforcement-audit/network/results/network-$AUDIT_RUN_ID.md" || -e "$ROOT/tests/enforcement-audit/network/results/network-$AUDIT_RUN_ID.raw.log" ) ) || ( "$RUN_FILESYSTEM" == 1 && ( -e "$ROOT/tests/enforcement-audit/filesystem/results/filesystem-$AUDIT_RUN_ID.md" || -e "$ROOT/tests/enforcement-audit/filesystem/results/filesystem-$AUDIT_RUN_ID.raw.log" ) ) || -e "$ROOT/evidence-attestations/evidence-$AUDIT_RUN_ID.manifest.json" || -e "$ROOT/evidence-attestations/evidence-$AUDIT_RUN_ID.sig" || -e "$ROOT/evidence-attestations/evidence-$AUDIT_RUN_ID.public.pem" ]]; then
     echo "Audit run ID already exists: $AUDIT_RUN_ID. Choose a new ID or archive the old reports." >&2
     return 2
   fi
@@ -296,9 +296,9 @@ run_audit() {
   [[ "$RUN_NETWORK" == 1 && "$RUN_FILESYSTEM" == 0 ]] && analysis_args+=(--network-only)
   [[ "$RUN_NETWORK" == 0 && "$RUN_FILESYSTEM" == 1 ]] && analysis_args+=(--filesystem-only)
   echo '=== Evidence attestation ==='
-  node "$ROOT/tests/evidence-attestation.mjs" create --run-id "$AUDIT_RUN_ID" "${analysis_args[@]}" || infra_failure=1
+  node "$ROOT/tests/enforcement-audit/evidence-attestation.mjs" create --run-id "$AUDIT_RUN_ID" "${analysis_args[@]}" || infra_failure=1
   echo '=== Automatic analysis ==='
-  bash "$ROOT/tests/analyze-results.sh" "${analysis_args[@]}" --run-id "$AUDIT_RUN_ID"
+  bash "$ROOT/tests/enforcement-audit/analyze-results.sh" "${analysis_args[@]}" --run-id "$AUDIT_RUN_ID"
   analysis_rc=$?
   [[ "$infra_failure" == 1 ]] && return 2
   return "$analysis_rc"
@@ -306,8 +306,8 @@ run_audit() {
 
 # Remove any test sandboxes still held by the OpenShell that is active now.
 cleanup_active_version() {
-  bash "$ROOT/tests/network/cleanup-network-test-environment.sh" >/dev/null 2>&1 || true
-  bash "$ROOT/tests/filesystem/cleanup-filesystem-test-environment.sh" >/dev/null 2>&1 || true
+  bash "$ROOT/tests/enforcement-audit/network/cleanup-network-test-environment.sh" >/dev/null 2>&1 || true
+  bash "$ROOT/tests/enforcement-audit/filesystem/cleanup-filesystem-test-environment.sh" >/dev/null 2>&1 || true
 }
 
 ORIGINAL_VERSION=""
@@ -351,6 +351,6 @@ done
 
 if [[ ${#VERSIONS[@]} -ge 2 ]]; then
   echo '=== Version comparison ==='
-  node "$ROOT/tests/compare-versions.mjs" || FINAL_RC=2
+  node "$ROOT/tests/enforcement-audit/compare-versions.mjs" || FINAL_RC=2
 fi
 exit "$FINAL_RC"

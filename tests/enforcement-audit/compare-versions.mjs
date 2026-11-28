@@ -3,15 +3,15 @@
 //
 // It only re-presents statuses that the analyzer already measured (it never rewrites one).
 // Usage:
-//   node tests/compare-versions.mjs                  every run in audit-reports/enforcement-audit/run-history
-//   node tests/compare-versions.mjs --include-archive  also runs moved to archived-results/
-//   node tests/compare-versions.mjs --run-id A --run-id B   only these runs
+//   node tests/enforcement-audit/compare-versions.mjs                  every run in audit-reports/enforcement-audit/run-history
+//   node tests/enforcement-audit/compare-versions.mjs --include-archive  also runs moved to archived-results/
+//   node tests/enforcement-audit/compare-versions.mjs --run-id A --run-id B   only these runs
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { testNames } from "./test-names.mjs";
 
-const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const root = path.dirname(path.dirname(path.dirname(fileURLToPath(import.meta.url))));
 const outputDir = path.join(root, "audit-reports", "enforcement-audit");
 const argv = process.argv.slice(2);
 const includeArchive = argv.includes("--include-archive");

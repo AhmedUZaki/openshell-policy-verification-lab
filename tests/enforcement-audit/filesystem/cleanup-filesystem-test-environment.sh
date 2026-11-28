@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 source "$ROOT/tests/shared/gateway-lifecycle.sh"
-STATE_FILE="$ROOT/tests/filesystem/.state/filesystem.env"
+STATE_FILE="$ROOT/tests/enforcement-audit/filesystem/.state/filesystem.env"
 export PATH="$HOME/.local/bin:$PATH"
 
 RESTRICTIVE_NAME="ft-fs-restrict"
@@ -22,8 +22,8 @@ for name in "$RESTRICTIVE_NAME" "$PERMISSIVE_NAME"; do
   fi
 done
 
-cleanup_gateway "$ROOT/tests/filesystem/.state"
+cleanup_gateway "$ROOT/tests/enforcement-audit/filesystem/.state"
 
 rm -f -- "$STATE_FILE"
-rm -rf "$ROOT/tests/filesystem/.state"
+rm -rf "$ROOT/tests/enforcement-audit/filesystem/.state"
 printf 'Filesystem test sandboxes removed.\n'

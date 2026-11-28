@@ -1,6 +1,6 @@
 // Composes a filesystem-invariance test policy: policies/enforcement-audit/filesystem-restrictive.yaml's
 // filesystem_policy/landlock/process (UNCHANGED) plus one NemoClaw tier's network_policies.
-// Used by tests/network/run-tier-filesystem-invariance.sh to verify docs/CLAIMS.md's other
+// Used by tests/tier-checks/run-tier-filesystem-invariance.sh to verify docs/CLAIMS.md's other
 // metamorphic relation: "filesystem invariance only with identical filesystem policies" --
 // the filesystem_policy here is byte-for-byte the same across all three tiers; only the
 // network_policies differ, so any difference in F1-F4 results across tiers is a real finding.
@@ -37,9 +37,9 @@ const block = networkPoliciesBlock(tier.presets);
 const composed = basePolicy.replace(marker, block ? `network_policies:\n${block}` : marker);
 const header = [
   "# GENERATED FILE -- do not edit by hand.",
-  `# Regenerate with: node tests/network/nemoclaw-tiers/compose-tier-filesystem-policy.mjs ${tierName} ${path.relative(root, outFile).replaceAll("\\", "/")}`,
+  `# Regenerate with: node tests/tier-checks/nemoclaw-tiers/compose-tier-filesystem-policy.mjs ${tierName} ${path.relative(root, outFile).replaceAll("\\", "/")}`,
   "# Source: policies/enforcement-audit/filesystem-restrictive.yaml (filesystem_policy/landlock/process) plus this",
-  `# tier's static presets from tests/network/nemoclaw-tiers/ (NemoClaw v0.0.140, commit 88fe14f3).`,
+  `# tier's static presets from tests/tier-checks/nemoclaw-tiers/ (NemoClaw v0.0.140, commit 88fe14f3).`,
   "",
 ].join("\n");
 

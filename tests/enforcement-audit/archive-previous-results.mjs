@@ -1,11 +1,11 @@
 // Moves results of earlier runs out of the active result directories so a new run starts clean.
 // Nothing is deleted: files are moved to archived-results/<run-id>/ (ignored by Git).
-// Usage: node tests/archive-previous-results.mjs [--dry-run]
+// Usage: node tests/enforcement-audit/archive-previous-results.mjs [--dry-run]
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const root = path.dirname(path.dirname(path.dirname(fileURLToPath(import.meta.url))));
 const archiveRoot = path.join(root, "archived-results");
 const dryRun = process.argv.includes("--dry-run");
 const stamp = new Date().toISOString().replace(/[-:.]/g, "");
@@ -14,8 +14,8 @@ const RUN_FILE = /^(?:network|filesystem|evidence)-([A-Za-z0-9._-]+?)(?:\.raw\.l
 
 // [directory relative to the project root, sub-folder name inside the run's archive]
 const sources = [
-  ["tests/network/results", "network"],
-  ["tests/filesystem/results", "filesystem"],
+  ["tests/enforcement-audit/network/results", "network"],
+  ["tests/enforcement-audit/filesystem/results", "filesystem"],
   ["evidence-attestations", "evidence-attestations"],
   ["audit-reports/enforcement-audit", "analysis"],
 ];

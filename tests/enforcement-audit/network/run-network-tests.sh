@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-HERE="$ROOT/tests/network"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+HERE="$ROOT/tests/enforcement-audit/network"
 STATE_FILE="$HERE/.state/network.env"
 RESULTS_DIR="$HERE/results"
 LOG_A="$HERE/local-test-servers/.runtime/logs/host-a.json"
