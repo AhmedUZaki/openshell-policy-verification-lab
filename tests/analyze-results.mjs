@@ -184,6 +184,39 @@ for (const item of Object.values(results)) {
   else counts.OTHER += 1;
 }
 
+// docs/CLAIMS.md, "M4 evaluation": Valid-Test Coverage = cases with a valid attempt / expected
+// cases in the selected scope. A valid attempt is one that produced a conclusive status; MISSING
+// and INCONCLUSIVE rows did not.
+const CONCLUSIVE_STATUSES = ["PASS", "FAIL", "EXPECTED", "LANDLOCK-LIMITATION"];
+const validAttempts = expected.filter((id) => CONCLUSIVE_STATUSES.includes(results[id]?.status));
+const validTestCoverage = expected.length ? validAttempts.length / expected.length : null;
+
+// Bypass Rate = confirmed prohibited successes / valid prohibited attempts with verified
+// prerequisites (per scenario; N/A if denominator = 0). "Prohibited" excludes the tests whose
+// predefined expectation is that the operation is allowed (positive controls and the HEAD/GET and
+// execute-from-read_only semantics), per docs/CLAIMS.md's "Positive precision controls" row and
+// the N08/F2_17 EXPECTED entries. LANDLOCK-LIMITATION counts as a valid prohibited attempt (the
+// prerequisites held) but not as a confirmed bypass, matching the METHODOLOGY.md verdict semantics.
+const ALLOWED_BY_DESIGN_IDS = new Set(["N08", "N10", "F2_11", "F2_17"]);
+const BYPASS_SCENARIOS = [
+  ["Network", "الشبكة", (id) => id.startsWith("N")],
+  ["F1 Read", "F1 القراءة", (id) => id.startsWith("F1")],
+  ["F2 Modify", "F2 التعديل", (id) => id.startsWith("F2")],
+  ["F3 Truncate", "F3 البتر", (id) => id.startsWith("F3")],
+  ["F4 Delete", "F4 الحذف", (id) => id.startsWith("F4")],
+];
+function bypassStats(ids) {
+  const prohibited = ids.filter((id) => !ALLOWED_BY_DESIGN_IDS.has(id));
+  const validProhibited = prohibited.filter((id) => ["PASS", "FAIL", "LANDLOCK-LIMITATION"].includes(results[id]?.status));
+  const bypasses = prohibited.filter((id) => results[id]?.status === "FAIL");
+  return { bypasses: bypasses.length, validProhibited: validProhibited.length, rate: validProhibited.length ? bypasses.length / validProhibited.length : null };
+}
+const bypassByScenario = BYPASS_SCENARIOS
+  .map(([nameEn, nameAr, matches]) => [nameEn, nameAr, expected.filter(matches)])
+  .filter(([, , ids]) => ids.length > 0)
+  .map(([nameEn, nameAr, ids]) => [nameEn, nameAr, bypassStats(ids)]);
+const bypassOverall = bypassStats(expected);
+
 let overall = "PASS";
 let exitCode = 0;
 if (missing.length || evidenceProblems.length || counts.INCONCLUSIVE || counts.OTHER) {
@@ -248,6 +281,34 @@ function summarySection(ar) {
   ];
 }
 
+function pct(rate) {
+  return rate === null ? "N/A" : `${(rate * 100).toFixed(1)}%`;
+}
+
+function metricsSection(ar) {
+  const coverageLine = ar
+    ? `- **تغطية الاختبارات الصالحة (Valid-Test Coverage):** ${validAttempts.length} / ${expected.length} (${pct(validTestCoverage)})`
+    : `- **Valid-Test Coverage:** ${validAttempts.length} / ${expected.length} (${pct(validTestCoverage)})`;
+  const overallLine = ar
+    ? `- **معدّل التجاوز الكلي (Bypass Rate):** ${bypassOverall.bypasses} / ${bypassOverall.validProhibited} (${pct(bypassOverall.rate)})`
+    : `- **Overall Bypass Rate:** ${bypassOverall.bypasses} / ${bypassOverall.validProhibited} (${pct(bypassOverall.rate)})`;
+  return [
+    ar ? "## المقاييس" : "## Metrics",
+    "",
+    coverageLine,
+    overallLine,
+    "",
+    ar ? "| السيناريو | التجاوزات المؤكدة | المحاولات المحظورة الصالحة | معدّل التجاوز |" : "| Scenario | Confirmed bypasses | Valid prohibited attempts | Bypass Rate |",
+    "|---|---|---|---|",
+    ...bypassByScenario.map(([nameEn, nameAr, stats]) => `| ${ar ? nameAr : nameEn} | ${stats.bypasses} | ${stats.validProhibited} | ${pct(stats.rate)} |`),
+    "",
+    ar
+      ? "- التعريفات في `docs/CLAIMS.md` («M4 evaluation»). السيناريو مجموعة حسب عائلة الاختبار (الشبكة، أو فئة الملفات)؛ خريطة أدق حسب مجال الضمان موجودة في جدول «Claim-to-test coverage» بـ `docs/CLAIMS.md`. الاختبارات المصممة للسماح عمدًا (N08, N10, F2_11, F2_17) مستبعدة من مقام معدّل التجاوز لأنها لا تختبر عملية محظورة."
+      : "- Definitions are in `docs/CLAIMS.md` (\"M4 evaluation\"). Scenario groups by test family (network, or filesystem category); the finer assurance-area mapping is in `docs/CLAIMS.md`'s \"Claim-to-test coverage\" table. Tests designed to be allowed (N08, N10, F2_11, F2_17) are excluded from the Bypass Rate denominator since they do not exercise a prohibited operation.",
+    "",
+  ];
+}
+
 function resultTables(ar) {
   if (missing.length === expected.length) return []; // nothing measured: the per-test tables would only repeat MISSING
   const sections = [
@@ -271,7 +332,7 @@ function resultTables(ar) {
 const generatedAt = new Date();
 const stamp = generatedAt.toISOString().replace(/[-:.]/g, "");
 const payload = {
-  schema_version: 3,
+  schema_version: 4,
   scope,
   run_id: selectedRunId,
   openshell_version: openshellVersion,
@@ -285,6 +346,15 @@ const payload = {
   overall,
   exit_code: exitCode,
   counts,
+  metrics: {
+    valid_test_coverage: { valid_attempts: validAttempts.length, expected: expected.length, rate: validTestCoverage },
+    bypass_rate: {
+      overall: { bypasses: bypassOverall.bypasses, valid_prohibited_attempts: bypassOverall.validProhibited, rate: bypassOverall.rate },
+      by_scenario: Object.fromEntries(bypassByScenario.map(([nameEn, , stats]) => [
+        nameEn, { bypasses: stats.bypasses, valid_prohibited_attempts: stats.validProhibited, rate: stats.rate },
+      ])),
+    },
+  },
   missing,
   evidence_problems: evidenceProblems,
   evidence_attestation: {
@@ -312,6 +382,7 @@ const markdown = [
   `- Signing-key fingerprint: \`${attestation.fingerprint ?? "missing"}\``,
   "",
   ...summarySection(false),
+  ...metricsSection(false),
   ...resultTables(false),
   "## Automatic interpretation",
   "",
@@ -344,6 +415,7 @@ const markdownAr = [
   `- بصمة مفتاح التوقيع: \`${attestation.fingerprint ?? "غير موجودة"}\``,
   "",
   ...summarySection(true),
+  ...metricsSection(true),
   ...resultTables(true),
   "## الاستنتاج الآلي",
   "",
