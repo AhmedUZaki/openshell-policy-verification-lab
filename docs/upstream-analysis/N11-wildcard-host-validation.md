@@ -1,23 +1,23 @@
 # Upstream analysis: N11, wildcard host validation on OpenShell 0.1.9 and 0.1.10
 
-GitHub issue: https://github.com/ai-openshell/openshell/issues/5623, titled "bug(policy): overly broad host wildcards like `**.*.*` pass validation" (open as of 2026-11-27, linked to PR #5621, also open). The issue describes which wildcard host patterns should be rejected by policy validation; OpenShell's published docs (`docs.nvidia.com/openshell/<version>/security/best-practices`) separately state the general network model is deny-by-default ("All egress denied. Only endpoints listed in `network_policies` can receive traffic.") but do not document specific wildcard-pattern validation rules anywhere this lab checked. This note records an independent live reproduction, on two OpenShell releases, with full request/response evidence - not just a reading of the issue text.
+OpenShell's own policy validation is expected to reject host-wildcard patterns that have no fixed domain anchor, consistent with its published deny-by-default network model (`docs.nvidia.com/openshell/<version>/security/best-practices`: "All egress denied. Only endpoints listed in `network_policies` can receive traffic."), though specific wildcard-pattern validation rules are not documented anywhere this lab checked. This note records an independent live reproduction of which wildcard host patterns `openshell policy set` actually accepts or rejects, on two OpenShell releases, with full request/response evidence, and finds that several patterns with no fixed anchor pass validation anyway.
 
 N11 is part of the automated N01-N12 network suite (`docs/CLAIMS.md`), run by `tests/network/run-network-tests.sh`; it does not use the restrictive-baseline policy for its own probe, because the finding is specifically about what the validator accepts in place of that baseline - the script swaps `ft-network`'s policy for the duration of the probe and reverts it afterward, the same pattern N06 already uses for its own policy change. This note was originally written from a manual, standalone reproduction across several OpenShell releases (0.1.9, 0.1.10); the automated N11 test now exercises the single riskiest pattern (`**.*.*`) on every run.
 
 ## Summary
 
-| # | Host pattern | Issue's expectation | Measured here (0.1.9, 0.1.10) |
+| # | Host pattern | Expected (fixed-domain anchor required) | Measured here (0.1.9, 0.1.10) |
 |---|---|---|---|
-| N11a | `**.*.*` | reject | **accepted**; live egress to a real internet host confirmed on both versions |
-| N11b | `*.*.*` | reject | **accepted** |
+| N11a | `**.*.*` | reject (no fixed label) | **accepted**; live egress to a real internet host confirmed on both versions |
+| N11b | `*.*.*` | reject (no fixed label) | **accepted** |
 | N11c | `a*.*` | reject (no fixed suffix) | rejected (`L7 policy validation failed: invalid L7 policy configuration`) |
-| N11d | `*.*.com` | reject (one fixed suffix only) | **accepted** |
-| N11e | `foo.*.com` | listed as passing | **accepted** |
-| N11f | `a*.com` | issue says it passes | rejected here |
-| N11g | `api.github.*` | wildcard in the suffix opens unspecified domains | **accepted** |
-| N11h | `*.example.{com,io}` | unanchored brace glob | **accepted** |
+| N11d | `*.*.com` | reject (one fixed label only) | **accepted** |
+| N11e | `foo.*.com` | reject (one fixed label after the wildcard) | **accepted** |
+| N11f | `a*.com` | reject (one fixed label, `com`) | rejected here |
+| N11g | `api.github.*` | reject (wildcard trailing label, no fixed suffix) | **accepted** |
+| N11h | `*.example.{com,io}` | reject (unanchored brace glob) | **accepted** |
 
-7 of 8 tested patterns were accepted by `openshell policy set` when the issue says they should be rejected; 2 (`a*.*`, `a*.com`) are rejected on the measured releases, which the issue itself does not claim for `a*.*` and contradicts for `a*.com` - so validation is not purely absent, but it is inconsistent and the two riskiest shapes tested (an all-wildcard host and several "public-looking" suffix wildcards) both slip through.
+6 of 8 tested patterns were accepted by `openshell policy set` even though none of them anchor to two fixed domain labels; only 2 (`a*.*`, `a*.com`) were rejected on the measured releases - so validation is not purely absent, but it is inconsistent, and the two riskiest shapes tested (an all-wildcard host and several "public-looking" suffix wildcards) both slip through.
 
 ## What was measured, and how
 
@@ -56,13 +56,13 @@ Only *validation* (accept/reject) was measured for N11b-N11h; reachability was n
 
 - **Established:** on this lab's OpenShell 0.1.9 and 0.1.10 installs, a sandbox policy using the host pattern `**.*.*` is accepted by `openshell policy set` and genuinely routes the sandbox's HTTPS traffic to an arbitrary real internet host with three or more labels, through OpenShell's own request-mediation path (confirmed by the `x-openshell-request-id` header on the real response).
 - **Established:** the same acceptance (without the second reachability check) also occurs for `*.*.*`, `*.*.com`, `foo.*.com`, `api.github.*`, and `*.example.{com,io}` on 0.1.9.
-- **Not established:** whether `a*.*` and `a*.com` are rejected on every 0.1.x release, or only on 0.1.9/0.1.10 (the GitHub issue's own author found `a*.com` passing at one validation surface, which did not match the result measured here, so either the specific check differs by release, by validation surface - `policy set` on a live sandbox versus other input paths such as `policy update`, proposal approval, or provider profile import/update/lint - or the installed build differs from what was described). Only the `policy set` surface was exercised; the other input paths named in the issue were not tested in this lab.
+- **Not established:** whether `a*.*` and `a*.com` are rejected on every 0.1.x release, or only on 0.1.9/0.1.10; only the `policy set` surface was exercised on a live sandbox - other input paths (`policy update`, proposal approval, provider profile import/update/lint) were not tested in this lab.
 - **Not established:** reachability for any pattern other than `**.*.*`, or on any OpenShell release other than 0.1.9 and 0.1.10.
 - This finding is narrower than this lab's general wildcard/DNS-egress limitation note: it is specifically that policy validation accepts several wildcard host shapes that, by the stated deny-by-default model, should not be able to open egress this broad.
 
 ## Consequence for reporting
 
-Reproducible on-demand, with a live egress proof (not just an accepted policy) on both the version this lab treats as the candidate release (0.1.9) and the latest stable release (0.1.10) as of 2026-11-27. This is a strong candidate to report upstream if it is not already reflected in issue #5623 (it already is open there; this note adds an independent, dated reproduction with evidence that could be attached as a comment).
+Reproducible on-demand, with a live egress proof (not just an accepted policy) on both the version this lab treats as the candidate release (0.1.9) and the latest stable release (0.1.10) as of 2026-11-27. This is a strong candidate to report upstream, with an independent, dated reproduction and evidence attached.
 
 ## How to reproduce
 

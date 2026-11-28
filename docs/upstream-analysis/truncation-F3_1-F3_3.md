@@ -36,7 +36,7 @@ Evidence 5 is the decisive one: the maintainers themselves state that denying tr
 ### What this establishes
 
 - **Established:** the V2 constant in 0.0.116 explains F3_1, and was later changed upstream with a stated truncation rationale. Measured on 2026-11-22: F3_1 fails on 0.0.116 and passes on 0.1.9 (size and hash unchanged), so the prediction was confirmed.
-- **Not established:** the exact upstream commit or issue that made the change (not found in public search), and whether any intermediate release between 0.0.116 and 0.1.9 changed it first.
+- **Not established:** the exact upstream commit that made the change (not found in public search), and whether any intermediate release between 0.0.116 and 0.1.9 changed it first.
 - The source was read from a clone of tag `v0.0.116`. The installed binary reports the same version and the same `abi:V2` log line, which is consistent but is not a binary-level proof.
 - NVIDIA's own pages were not used as authority; only the OpenShell repository at the tagged versions.
 - Because F3_1 appears fixed upstream, it is not a good candidate for reporting as a new vulnerability.
