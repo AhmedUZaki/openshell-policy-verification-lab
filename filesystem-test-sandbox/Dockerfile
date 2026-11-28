@@ -7,7 +7,7 @@ RUN apt-get update \
     && groupadd --gid 1500 tester \
     && useradd --uid 1500 --gid 1500 --create-home --shell /bin/bash tester \
     && mkdir -p /work /opt/claims-fixtures/hidden /opt/claims-fixtures/readonly /opt/claims-fixtures/readonly/empty-dir-t24 \
-    && printf 'HIDDEN_MARKER_T07\n' > /opt/claims-fixtures/hidden/read.txt \
+    && printf 'HIDDEN_MARKER_F1_1\n' > /opt/claims-fixtures/hidden/read.txt \
     && printf 'ORIGINAL_MODIFY_T08\n' > /opt/claims-fixtures/readonly/modify.txt \
     && printf 'ORIGINAL_TRUNCATE_T09\n' > /opt/claims-fixtures/readonly/truncate.txt \
     && printf 'ORIGINAL_DELETE_T10\n' > /opt/claims-fixtures/readonly/delete.txt \
@@ -25,7 +25,7 @@ RUN apt-get update \
     && printf 'ORIGINAL_SYMLINK_WRITE_T30\n' > /opt/claims-fixtures/readonly/symlink-write.txt \
     && printf 'ORIGINAL_MMAP_T31\n' > /opt/claims-fixtures/readonly/mmap.txt \
     && printf 'ORIGINAL_RDONLY_TRUNC_T32\n' > /opt/claims-fixtures/readonly/rdonly-truncate.txt \
-    && printf '#!/bin/sh\nprintf "EXEC_MARKER_T35\\n"\n' > /opt/claims-fixtures/readonly/execute-t35.sh \
+    && printf '#!/bin/sh\nprintf "EXEC_MARKER_F2_17\\n"\n' > /opt/claims-fixtures/readonly/execute-t35.sh \
     && ln -s ../hidden/read.txt /opt/claims-fixtures/readonly/hidden-link-t29 \
     && chown -R tester:tester /work /opt/claims-fixtures \
     && chmod 0777 /opt/claims-fixtures /opt/claims-fixtures/hidden /opt/claims-fixtures/readonly \
