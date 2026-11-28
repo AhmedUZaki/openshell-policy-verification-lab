@@ -6,8 +6,8 @@ rem (PREPARED, PREP_FAILED) are visible to the caller after the call returns.
 rem
 rem Usage (from a caller that already did "cd /d %%~dp0" to the project root):
 rem   set "PREP_FLAGS=--dry-run"   (optional, before calling)
-rem   call setup\choose-openshell-version.cmd single   (one version only; no "All" option)
-rem   call setup\choose-openshell-version.cmd multi    (adds "All installed, then compare")
+rem   call choose-openshell-version.cmd single   (one version only; no "All" option)
+rem   call choose-openshell-version.cmd multi    (adds "All installed, then compare")
 rem
 rem On return:
 rem   PREP_FAILED=1   the user cancelled, or the download/verification failed; caller should stop.

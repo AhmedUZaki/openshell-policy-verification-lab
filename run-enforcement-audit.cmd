@@ -28,7 +28,7 @@ rem The version is downloaded and verified right away, BEFORE the tests are chos
 set "VERSION_ARGS="
 set "PREP_FLAGS="
 if "%DRY_RUN%"=="1" set "PREP_FLAGS=--dry-run"
-if "%HAS_SCOPE%"=="0" if "%VERSIONED%"=="0" call setup\choose-openshell-version.cmd multi
+if "%HAS_SCOPE%"=="0" if "%VERSIONED%"=="0" call .\choose-openshell-version.cmd multi
 if "%PREP_FAILED%"=="1" (
   echo.
   echo No OpenShell version was prepared ^(cancelled, or the download failed^). Nothing was run.

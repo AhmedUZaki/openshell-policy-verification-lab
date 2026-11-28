@@ -24,14 +24,14 @@ set "HAS_VERSION=0"
 for %%A in (%*) do if /i "%%~A"=="--openshell-version" set "HAS_VERSION=1"
 set "OS_VERSION_ARG="
 if "%HAS_VERSION%"=="0" (
-  call setup\choose-openshell-version.cmd single
+  call .\choose-openshell-version.cmd single
   if "!PREP_FAILED!"=="1" (
     echo.
     echo No OpenShell version was prepared ^(cancelled, or the download failed^). Nothing was run.
     if /i not "%~1"=="nopause" pause
     exit /b 2
   )
-  set "OS_VERSION_ARG=--openshell-version !PREPARED!"
+  if defined PREPARED set "OS_VERSION_ARG=--openshell-version !PREPARED!"
 )
 
 rem Choose what to run, unless a scope flag was already given on the command line.
